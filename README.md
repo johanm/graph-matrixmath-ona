@@ -8,7 +8,7 @@
 
 ## What is this?
 
-This repository contains two companion pieces that develop the mathematical foundations of **Organizational Network Analysis (ONA)** — the discipline of using network science to understand how people actually collaborate, communicate, and share information inside organizations.
+This repository contains two companion pieces that develop the mathematical foundations of **Organizational Network Analysis (ONA)**, the discipline of using network science to understand how people actually collaborate, communicate, and share information inside organizations.
 
 ONA is increasingly used by HR, People Analytics, and organizational design teams to answer questions like: Where are the informal leaders? Where are the silos? Who is a single point of failure for organizational resilience? How fast does information actually travel? The mathematics behind these questions is spectral graph theory, and that is what this material covers.
 
@@ -25,7 +25,7 @@ A long-form essay covering the full mathematical toolkit for ONA, written for a 
 - The Laplacian matrix (combinatorial, weighted, and normalized variants) and why each entry pattern has the structure it does
 - The Fiedler value (λ₂) and algebraic connectivity as a measure of organizational resilience
 - Spectral clustering for discovering informal communities
-- Spectral graph drawing — using eigenvectors as geometric coordinates, and why a large λ₂ is a proof that no clean visualization of the network exists
+- Spectral graph drawing: using eigenvectors as geometric coordinates, and why a large λ₂ is a proof that no clean visualization of the network exists
 - Eigenvector centrality, betweenness, and PageRank
 - Directed networks, bipartite networks, hypergraph Laplacians, and multi-layer networks
 - Temporal tracking of spectral health over time
@@ -44,9 +44,9 @@ An interactive Jupyter notebook that implements every concept from the essay in 
 | 2 | The Laplacian L = D − A, and all three variants (combinatorial, weighted, normalized) |
 | 3 | Laplacian intuition: heat diffusion on a graph |
 | 4 | Fiedler value, algebraic connectivity & resilience |
+| 4b | Sign ambiguity and eigenvalue degeneracy (interlude) |
 | 5 | Spectral clustering: finding informal communities |
-| 6 | Spectral clustering: finding informal communities |
-| 7 | Spectral graph drawing: eigenvectors as geometry, and the λ₂ ↔ drawability theorem |
+| 6 | Spectral graph drawing: eigenvectors as geometry, and the λ₂ ↔ drawability theorem |
 | 8 | Directed networks: in/out centrality |
 | 9 | Centrality: degree, eigenvector, betweenness, PageRank |
 | 10 | Matrix powers: walks, triangles & structural holes |
@@ -63,7 +63,7 @@ An interactive Jupyter notebook that implements every concept from the essay in 
 
 ## Running the notebook
 
-### Option 1 — Google Colab (recommended for beginners)
+### Option 1: Google Colab (recommended for beginners)
 
 Click the badge at the top of this README, or use this link:
 
@@ -73,9 +73,9 @@ https://colab.research.google.com/github/johanm/graph-matrixmath-ona/blob/main/g
 
 Colab runs entirely in your browser. No installation required. You will need a Google account. Once the notebook opens, go to **Runtime → Run all** to execute all cells, or run them one at a time with **Shift+Enter**.
 
-The notebook installs no unusual packages — it uses only `numpy`, `scipy`, `matplotlib`, `networkx`, `pandas`, and `scikit-learn`, all of which are pre-installed in Colab.
+The notebook installs no unusual packages; it uses only `numpy`, `scipy`, `matplotlib`, `networkx`, `pandas`, and `scikit-learn`, all of which are pre-installed in Colab.
 
-### Option 2 — Local Jupyter
+### Option 2: Local Jupyter
 
 ```bash
 pip install numpy scipy matplotlib networkx pandas scikit-learn
@@ -90,7 +90,7 @@ jupyter lab graphmatrixmath.ipynb
 
 Python 3.9 or later is recommended.
 
-### Option 3 — VS Code
+### Option 3: VS Code
 
 Open the `.ipynb` file directly in VS Code with the Jupyter extension installed. Select a Python kernel with the dependencies above.
 
@@ -98,7 +98,7 @@ Open the `.ipynb` file directly in VS Code with the Jupyter extension installed.
 
 ## A note on notebook file size
 
-Jupyter embeds every plot as a base64-encoded image inside the `.ipynb` JSON file. After running all 18 parts (~30 figures), the notebook will grow significantly. Part 0 explains the DPI setting that controls this. If you want to commit a clean version to git, run **Kernel → Restart & Clear Output** before saving.
+Jupyter embeds every plot as a base64-encoded image inside the `.ipynb` JSON file. After running all 18 parts (Parts 0–6 and 8–18, ~30 figures), the notebook will grow significantly. Part 0 explains the DPI setting that controls this. If you want to commit a clean version to git, run **Kernel → Restart & Clear Output** before saving.
 
 ---
 
@@ -110,13 +110,13 @@ Created by **[Johan Myrberger](https://www.linkedin.com/in/myrberger/)**, who ex
 
 ## Background and motivation
 
-The mathematical content draws on classical results in spectral and algebraic graph theory — in particular the work of Fiedler (algebraic connectivity), Hall (spectral graph drawing), and Tutte (spring embeddings).
+The mathematical content draws on classical results in spectral and algebraic graph theory, in particular the work of Fiedler (algebraic connectivity), Hall (spectral graph drawing), and Tutte (spring embeddings).
 
-A highly recommended companion resource is Daniel Spielman's lecture **"Miracles of Algebraic Graph Theory"** — an accessible and inspiring overview of spectral graph theory from one of its leading researchers. The lecture covers spectral graph drawing, the Laplacian quadratic form, Tutte's spring embedding theorem, and the connection between the Fiedler value and network drawability — all topics developed further in the essay and notebook here.
+A highly recommended companion resource is Daniel Spielman's lecture **"Miracles of Algebraic Graph Theory"**, an accessible and inspiring overview of spectral graph theory from one of its leading researchers. The lecture covers spectral graph drawing, the Laplacian quadratic form, Tutte's spring embedding theorem, and the connection between the Fiedler value and network drawability, all topics developed further in the essay and notebook here.
 
-[![Miracles of Algebraic Graph Theory — Daniel Spielman](https://img.youtube.com/vi/CDMQR422LGM/0.jpg)](https://www.youtube.com/watch?v=CDMQR422LGM)
+[![Miracles of Algebraic Graph Theory, Daniel Spielman](https://img.youtube.com/vi/CDMQR422LGM/0.jpg)](https://www.youtube.com/watch?v=CDMQR422LGM)
 
-The ONA framing — connecting each mathematical object to a concrete organizational question — is Johan's own.
+The ONA framing (connecting each mathematical object to a concrete organizational question) is Johan's own.
 
 ---
 
@@ -126,7 +126,7 @@ The ONA framing — connecting each mathematical object to a concrete organizati
 2. Open the notebook and run Part 0 (setup), then follow along with whichever essay section interests you.
 3. The notebook's Part 18 (summary reference table) is a useful cheat sheet once you've been through the material.
 
-For readers new to network analysis entirely, Parts 1–5 of the notebook (adjacency matrix through spectral clustering) form a self-contained introduction that covers the most practically useful ideas.
+For readers new to network analysis entirely, Parts 1–5 of the notebook (adjacency matrix through spectral clustering, including the sign ambiguity interlude at Part 4b) form a self-contained introduction that covers the most practically useful ideas. Part 12 (cospectral graphs) uses a verified pair of non-isomorphic graphs with identical spectra, confirmed computationally.
 
 ---
 

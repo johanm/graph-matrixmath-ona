@@ -341,6 +341,7 @@ window.MathJax = {
     <li><a href="#laplacian">The Laplacian</a></li>
     <li><a href="#example">A Concrete Example</a></li>
     <li><a href="#spectrum">Eigenvalues &amp; the Spectrum</a></li>
+    <li><a href="#sign-degeneracy">Sign Ambiguity &amp; Degeneracy</a></li>
     <li><a href="#drawing">Spectral Graph Drawing</a></li>
     <li><a href="#centrality">Centrality</a></li>
     <li><a href="#gft">Graph Fourier Transform</a></li>
@@ -361,19 +362,19 @@ window.MathJax = {
 <!-- ══ S1 · ADJACENCY ════════════════════════════════════════════════════════ -->
 <section id="adjacency">
 <h2>From relationships to structure</h2>
-<p>Every ONA project starts with the same act: you map who talks to whom, who collaborates with whom, who trusts whom. What you end up with is a <em>graph</em> — a collection of <strong>nodes</strong> (people, teams, roles) and <strong>edges</strong> (interactions, ties, flows). For small networks you can draw this on a whiteboard and eyeball it. But organizations are complex, ties are numerous, and your intuition quickly hits its limits. That is where the mathematical machinery enters, and it enters through a single elegant object: the <strong>matrix</strong>.</p>
+<p>Every ONA project starts with the same act: you map who talks to whom, who collaborates with whom, who trusts whom. What you end up with is a <em>graph</em> :  a collection of <strong>nodes</strong> (people, teams, roles) and <strong>edges</strong> (interactions, ties, flows). For small networks you can draw this on a whiteboard and eyeball it. But organizations are complex, ties are numerous, and your intuition quickly hits its limits. That is where the mathematical machinery enters, and it enters through a single elegant object: the <strong>matrix</strong>.</p>
 
 <h2 id="adjacency-matrix" style="border-top:none;padding-top:0;margin-top:1.5rem;">The adjacency matrix: encoding the graph as algebra</h2>
 <p>Take a network of $n$ people. The <strong>adjacency matrix</strong> $A$ is an $n \times n$ table where each cell $A_{ij}$ equals $1$ if person $i$ and person $j$ have a connection, and $0$ if they do not. In a weighted network the cell holds the tie strength instead of a binary $1$.</p>
-<p>This translation from drawing to table is not just convenient notation. It converts the network into a mathematical object you can compute with — multiply it, decompose it, exponentiate it. Everything that follows flows from this.</p>
-<p>For undirected networks (where "Alice talks to Bob" implies "Bob talks to Alice") the matrix is <em>symmetric</em>: $A_{ij} = A_{ji}$ always. The row sum of row $i$ gives node $i$'s degree — their number of direct connections — extracted by a trivial arithmetic operation.</p>
+<p>This translation from drawing to table is not just convenient notation. It converts the network into a mathematical object you can compute with: multiply it, decompose it, exponentiate it. Everything that follows flows from this.</p>
+<p>For undirected networks (where "Alice talks to Bob" implies "Bob talks to Alice") the matrix is <em>symmetric</em>: $A_{ij} = A_{ji}$ always. The row sum of row $i$ gives node $i$'s degree, that is, their number of direct connections, extracted by a trivial arithmetic operation.</p>
 </section>
 
 <!-- ══ S2 · DIRECTED ══════════════════════════════════════════════════════════ -->
 <section id="directed">
 <h2>A note on directed networks</h2>
-<p>Reporting hierarchies, approval chains, and information flows are naturally directional: the edge from $A$ to $B$ is not the same as the edge from $B$ to $A$. The Laplacian for a directed graph still exists — constructed as $L = D - A$ using out-degrees on the diagonal — but it is no longer symmetric.</p>
-<p>Eigenvector centrality splits into two measures: <em>in-centrality</em> (the left eigenvector — who receives attention from high-status others) and <em>out-centrality</em> (the right eigenvector — who sends attention toward high-status others). PageRank exists precisely because directed-graph centrality needed a principled solution. For most of the machinery below, assume undirected networks unless stated otherwise.</p>
+<p>Reporting hierarchies, approval chains, and information flows are naturally directional: the edge from $A$ to $B$ is not the same as the edge from $B$ to $A$. An analogous Laplacian $L = D_{\text{out}} - A$ can be constructed using out-degrees on the diagonal (where $D_{\text{out}}$ is the diagonal matrix of out-degrees), but it is no longer symmetric, and many of the spectral properties that hold for undirected graphs require modification or fail entirely.</p>
+<p>Eigenvector centrality splits into two measures: <em>in-centrality</em> (the HITS authority score, that is, the leading eigenvector of $A^T A$, which captures who receives attention from high-status others) and <em>out-centrality</em> (the HITS hub score, the leading eigenvector of $A A^T$, which captures who sends attention toward high-status others). PageRank exists precisely because directed-graph centrality needed a principled solution. For most of the machinery below, assume undirected networks unless stated otherwise. A further reason: the directed Laplacian $L = D_{\text{out}} - A$ is not symmetric, so its eigenvalues can be complex numbers, which breaks the real-valued spectral decomposition that all subsequent analysis relies on. This is why directed analysis uses HITS scores and PageRank rather than Laplacian eigenvectors.</p>
 </section>
 
 <!-- ══ S3 · LAPLACIAN ═════════════════════════════════════════════════════════ -->
@@ -386,7 +387,7 @@ window.MathJax = {
   <li>The number of zero eigenvalues of $L$ equals the number of disconnected components.</li>
   <li>The eigenvalues of $L$ encode virtually everything about network structure.</li>
 </ul>
-<p>In an ONA context, $L$ tells you: how many isolated subgroups exist? Where are the structural fractures? If you removed a few people, would the organization fragment into islands?</p>
+<p>In an ONA context, $L$ tells you: how many isolated subgroups exist? Where are the structural fractures? If you removed a few people, would the organization fragment into islands? The full object is rich enough to support three useful variants (combinatorial, weighted, and normalised), which are developed in detail in the <a href="#interlude">Laplacian interlude</a> later. For now, all analysis uses the combinatorial version unless noted.</p>
 </section>
 
 <!-- ══ S4 · CONCRETE EXAMPLE ═════════════════════════════════════════════════ -->
@@ -442,15 +443,14 @@ L = \begin{pmatrix} \mathbf{2} & -1 & -1 & 0 & 0 \\ -1 & \mathbf{3} & -1 & -1 & 
 </div>
 
 <div class="callout">
-  <strong>Reading the Laplacian:</strong> The bold diagonal entries are the node degrees. Off-diagonal $-1$ entries mark edges. Every row sums to zero — the algebraic signature of a difference operator rather than an absolute-value one.
+  <strong>Reading the Laplacian:</strong> The bold diagonal entries are the node degrees. Off-diagonal $-1$ entries mark edges. Every row sums to zero, which is the algebraic signature of a difference operator rather than an absolute-value one.
 </div>
 
-<p>The spectrum of $L$ is approximately $\{0,\; 0.54,\; 2,\; 3,\; 4.46\}$. The Fiedler value $\lambda_2 \approx 0.54$ indicates moderate connectivity. Its eigenvector, the <em>Fiedler vector</em>, assigns:</p>
+<p>The spectrum of $L$ is approximately $\{0,\; 0.697,\; 1.382,\; 3.618,\; 4.303\}$. The Fiedler value $\lambda_2 \approx 0.697$ indicates moderate connectivity. Its eigenvector, the <em>Fiedler vector</em>, assigns:</p>
 
 <figure>
-  <!-- Fiedler vector colour-coded on graph -->
-  <svg viewBox="0 0 520 240" xmlns="http://www.w3.org/2000/svg" style="max-width:500px;">
-    <!-- colour legend bar -->
+  <!-- Fiedler vector colour-coded on graph: corrected values -->
+  <svg viewBox="0 0 520 250" xmlns="http://www.w3.org/2000/svg" style="max-width:500px;">
     <defs>
       <linearGradient id="fiedler-grad" x1="0" x2="1" y1="0" y2="0">
         <stop offset="0%"   stop-color="#2a6496"/>
@@ -458,44 +458,44 @@ L = \begin{pmatrix} \mathbf{2} & -1 & -1 & 0 & 0 \\ -1 & \mathbf{3} & -1 & -1 & 
         <stop offset="100%" stop-color="#c0392b"/>
       </linearGradient>
     </defs>
-    <rect x="30" y="210" width="200" height="12" rx="3" fill="url(#fiedler-grad)"/>
-    <text x="30"  y="237" font-size="10" fill="#666" font-family="JetBrains Mono,monospace">−0.54 (core)</text>
-    <text x="175" y="237" font-size="10" fill="#666" font-family="JetBrains Mono,monospace">+0.54 (leaf)</text>
-    <!-- edges -->
-    <line x1="155" y1="100" x2="255" y2="55"  stroke="#c0c0b8" stroke-width="2.5"/>
-    <line x1="155" y1="100" x2="255" y2="155" stroke="#c0c0b8" stroke-width="2.5"/>
-    <line x1="255" y1="55"  x2="255" y2="155" stroke="#c0c0b8" stroke-width="2.5"/>
-    <line x1="255" y1="55"  x2="390" y2="55"  stroke="#8b3535" stroke-width="3" stroke-dasharray="6,3"/>
-    <line x1="255" y1="155" x2="390" y2="185" stroke="#8b3535" stroke-width="3" stroke-dasharray="6,3"/>
-    <!-- Ana: value ≈ -0.52 → blue-ish -->
-    <circle cx="155" cy="100" r="30" fill="#2a6496"/>
-    <text x="155" y="96" text-anchor="middle" fill="white" font-family="Playfair Display,serif" font-size="13" font-weight="bold">Ana</text>
-    <text x="155" y="111" text-anchor="middle" fill="white" font-family="JetBrains Mono,monospace" font-size="9">−0.52</text>
-    <!-- Bo: value ≈ -0.18 → light blue -->
-    <circle cx="255" cy="55" r="30" fill="#5a8fbb"/>
-    <text x="255" y="51" text-anchor="middle" fill="white" font-family="Playfair Display,serif" font-size="13" font-weight="bold">Bo</text>
-    <text x="255" y="66" text-anchor="middle" fill="white" font-family="JetBrains Mono,monospace" font-size="9">−0.18</text>
-    <!-- Cy: value ≈ -0.18 → light blue -->
-    <circle cx="255" cy="155" r="30" fill="#5a8fbb"/>
-    <text x="255" y="151" text-anchor="middle" fill="white" font-family="Playfair Display,serif" font-size="13" font-weight="bold">Cy</text>
-    <text x="255" y="166" text-anchor="middle" fill="white" font-family="JetBrains Mono,monospace" font-size="9">−0.18</text>
-    <!-- Dev: value ≈ +0.54 → red -->
-    <circle cx="390" cy="55" r="30" fill="#c0392b"/>
-    <text x="390" y="51" text-anchor="middle" fill="white" font-family="Playfair Display,serif" font-size="13" font-weight="bold">Dev</text>
-    <text x="390" y="66" text-anchor="middle" fill="white" font-family="JetBrains Mono,monospace" font-size="9">+0.54</text>
-    <!-- Eve: value ≈ +0.54 → red -->
-    <circle cx="390" cy="185" r="30" fill="#c0392b"/>
-    <text x="390" y="181" text-anchor="middle" fill="white" font-family="Playfair Display,serif" font-size="13" font-weight="bold">Eve</text>
-    <text x="390" y="196" text-anchor="middle" fill="white" font-family="JetBrains Mono,monospace" font-size="9">+0.54</text>
+    <rect x="30" y="218" width="220" height="12" rx="3" fill="url(#fiedler-grad)"/>
+    <text x="30"  y="244" font-size="10" fill="#666" font-family="JetBrains Mono,monospace">−0.68 (Dev arm)</text>
+    <text x="185" y="244" font-size="10" fill="#666" font-family="JetBrains Mono,monospace">+0.68 (Eve arm)</text>
+    <!-- edges: Bo–Dev and Cy–Eve shown dashed (bridge/pendant edges); vertical line shows Fiedler cut separating {Bo,Dev} from {Ana,Cy,Eve} -->
+    <line x1="155" y1="110" x2="255" y2="60"  stroke="#c0c0b8" stroke-width="2.5"/>
+    <line x1="155" y1="110" x2="255" y2="165" stroke="#c0c0b8" stroke-width="2.5"/>
+    <line x1="255" y1="60"  x2="255" y2="165" stroke="#c0c0b8" stroke-width="2.5"/>
+    <line x1="255" y1="60"  x2="390" y2="60"  stroke="#8b3535" stroke-width="2.5" stroke-dasharray="6,3"/>
+    <line x1="255" y1="165" x2="390" y2="195" stroke="#8b3535" stroke-width="2.5" stroke-dasharray="6,3"/>
+    <!-- Ana: value ≈ 0.00 → neutral grey (sits exactly on the cut) -->
+    <circle cx="155" cy="110" r="30" fill="#7a7a7a"/>
+    <text x="155" y="106" text-anchor="middle" fill="white" font-family="Playfair Display,serif" font-size="13" font-weight="bold">Ana</text>
+    <text x="155" y="121" text-anchor="middle" fill="white" font-family="JetBrains Mono,monospace" font-size="9">≈ 0.00</text>
+    <!-- Bo: value −0.205 → medium blue (same arm as Dev) -->
+    <circle cx="255" cy="60" r="30" fill="#5a8fbb"/>
+    <text x="255" y="56" text-anchor="middle" fill="white" font-family="Playfair Display,serif" font-size="13" font-weight="bold">Bo</text>
+    <text x="255" y="71" text-anchor="middle" fill="white" font-family="JetBrains Mono,monospace" font-size="9">−0.20</text>
+    <!-- Cy: value +0.205 → medium red (same arm as Eve) -->
+    <circle cx="255" cy="165" r="30" fill="#c07060"/>
+    <text x="255" y="161" text-anchor="middle" fill="white" font-family="Playfair Display,serif" font-size="13" font-weight="bold">Cy</text>
+    <text x="255" y="176" text-anchor="middle" fill="white" font-family="JetBrains Mono,monospace" font-size="9">+0.20</text>
+    <!-- Dev: value −0.677 → deep blue -->
+    <circle cx="390" cy="60" r="30" fill="#2a6496"/>
+    <text x="390" y="56" text-anchor="middle" fill="white" font-family="Playfair Display,serif" font-size="13" font-weight="bold">Dev</text>
+    <text x="390" y="71" text-anchor="middle" fill="white" font-family="JetBrains Mono,monospace" font-size="9">−0.68</text>
+    <!-- Eve: value +0.677 → deep red -->
+    <circle cx="390" cy="195" r="30" fill="#c0392b"/>
+    <text x="390" y="191" text-anchor="middle" fill="white" font-family="Playfair Display,serif" font-size="13" font-weight="bold">Eve</text>
+    <text x="390" y="206" text-anchor="middle" fill="white" font-family="JetBrains Mono,monospace" font-size="9">+0.68</text>
     <!-- cut label -->
-    <text x="328" y="120" font-size="11" fill="#8b3535" font-family="Playfair Display,serif" font-style="italic">cut</text>
+    <text x="328" y="128" font-size="11" fill="#8b3535" font-family="Playfair Display,serif" font-style="italic">cut</text>
     <line x1="335" y1="28" x2="335" y2="215" stroke="#8b3535" stroke-width="1" stroke-dasharray="4,4"/>
   </svg>
-  <figcaption>The Fiedler vector colour-coded on the graph. Blue nodes have negative values (core); red nodes have positive values (periphery). The dashed red cut — severing the two bridge edges — is the split revealed by $\lambda_2$.</figcaption>
+  <figcaption>The Fiedler vector colour-coded on the graph. Blue nodes (Bo, Dev) have negative values; red nodes (Cy, Eve) have positive values; Ana sits exactly at zero — the geometric midpoint of the two arms, straddling the structural divide. The dashed pendant edges (Bo–Dev and Cy–Eve) highlight the two peripheral arms; the vertical dashed line marks the Fiedler threshold cut, which separates {Bo, Dev} from {Ana, Cy, Eve}. Note that the true articulation points (nodes whose removal disconnects the graph) are Bo and Cy, not Ana.</figcaption>
 </figure>
 
-<h3>Fiedler vector vs eigenvector centrality: location vs influence</h3>
-<p>It is instructive to compare two quantities on the same five-node graph. The <strong>Fiedler vector</strong> ($v_2$) reveals <em>structural location</em> — how far a node sits from the primary cut. The <strong>eigenvector centrality</strong> (leading eigenvector of $A$) reveals <em>influence</em> — who is connected to well-connected others. They answer different questions and can point in opposite directions.</p>
+<h3>Fiedler vector vs eigenvector centrality: geometric position vs influence</h3>
+<p>It is instructive to compare two quantities on the same five-node graph. The <strong>Fiedler vector</strong> ($v_2$) reveals <em>geometric position</em> relative to the primary structural cut , specifically where a node sits in the partition. The <strong>eigenvector centrality</strong> (leading eigenvector of $A$, corresponding to $A$'s largest eigenvalue) reveals <em>influence</em> , that is, who is connected to well-connected others. They answer fundamentally different questions and can point in opposite directions.</p>
 
 <div style="overflow-x:auto;margin:1.5rem 0;">
 <table class="variant-table">
@@ -509,17 +509,17 @@ L = \begin{pmatrix} \mathbf{2} & -1 & -1 & 0 & 0 \\ -1 & \mathbf{3} & -1 & -1 & 
     </tr>
   </thead>
   <tbody>
-    <tr><td>Ana</td><td>2</td><td>$-0.52$ (deep core)</td><td>0.50</td><td>Core member, moderate influence</td></tr>
-    <tr><td>Bo</td><td>3</td><td>$-0.18$ (core)</td><td>0.60</td><td>Most influential — hub of the triangle</td></tr>
-    <tr><td>Cy</td><td>3</td><td>$-0.18$ (core)</td><td>0.57</td><td>Influential hub, also bridges to Eve</td></tr>
-    <tr><td>Dev</td><td>1</td><td>$+0.54$ (periphery)</td><td>0.28</td><td>Peripheral and low-influence — a leaf</td></tr>
-    <tr><td>Eve</td><td>1</td><td>$+0.54$ (periphery)</td><td>0.26</td><td>Peripheral and low-influence — a leaf</td></tr>
+    <tr><td>Ana</td><td>2</td><td>$\approx 0.00$ (cut boundary)</td><td>0.49</td><td>Geometric midpoint of the two arms; sits on the Fiedler cut boundary. Not an articulation point.</td></tr>
+    <tr><td>Bo</td><td>3</td><td>$-0.20$ (Dev arm)</td><td>0.57</td><td>High influence; inner node of the Bo–Dev arm</td></tr>
+    <tr><td>Cy</td><td>3</td><td>$+0.20$ (Eve arm)</td><td>0.57</td><td>High influence; inner node of the Cy–Eve arm</td></tr>
+    <tr><td>Dev</td><td>1</td><td>$-0.68$ (leaf, Dev arm)</td><td>0.25</td><td>Peripheral leaf on the Bo arm; low influence</td></tr>
+    <tr><td>Eve</td><td>1</td><td>$+0.68$ (leaf, Eve arm)</td><td>0.25</td><td>Peripheral leaf on the Cy arm; low influence</td></tr>
   </tbody>
 </table>
 </div>
-<p>Dev and Eve score identically on both measures because the graph is symmetric with respect to them. Bo scores highest on eigenvector centrality because it connects to both other high-degree nodes (Ana, Cy) and a peripheral node (Dev). Note that Bo's Fiedler value is less negative than Ana's — Ana is actually <em>deeper</em> in the core despite having lower eigenvector centrality. The Fiedler value is not a prestige measure; it is a geometric one.</p>
+<p>Several things are worth noting. Bo and Cy score identically on eigenvector centrality; this is forced by the graph's symmetry: each connects to Ana, to the other hub, and to one leaf, so they are structurally mirror images. Dev and Eve are likewise mirror images and score equally. The graph does <em>not</em> have a symmetry swapping Dev and Eve with each other (Dev attaches to Bo, Eve to Cy), and the Fiedler vector reveals this: they land on <em>opposite</em> sides of the cut. Ana, by contrast, lands exactly at zero: she is the <em>geometric midpoint</em> of the two arms in spectral space, straddling the Fiedler cut boundary. This does not make Ana the most structurally vulnerable node — that distinction belongs to Bo and Cy, which are the actual articulation points (cut vertices): removing Bo disconnects Dev from the rest, and removing Cy disconnects Eve. Removing Ana leaves the remaining four nodes connected. The Fiedler value is not a prestige or vulnerability measure; it is a geometric one that identifies structural position relative to the primary partition.</p>
 
-<p>The natural split revealed is $\{$Dev, Eve$\}$ from the rest — exactly the two peripheral nodes connected to the core by single bridges. <em>This entry pattern — diagonal equals degree, off-diagonal equals $-1$ for edges, zero otherwise — is specific to the unweighted combinatorial Laplacian.</em> Weighted and normalised variants modify it in principled ways covered in the <a href="#interlude">Laplacian interlude</a> below.</p>
+<p>The natural split revealed is the <em>Bo–Dev arm</em> (negative values) from the <em>Cy–Eve arm</em> (positive values), with Ana straddling the boundary. <em>This entry pattern (diagonal equals degree, off-diagonal equals $-1$ for edges, zero otherwise) is specific to the unweighted combinatorial Laplacian.</em> Weighted and normalised variants modify it in principled ways covered in the <a href="#interlude">Laplacian interlude</a> below.</p>
 </section>
 
 <!-- ══ S5 · SPECTRUM ══════════════════════════════════════════════════════════ -->
@@ -528,27 +528,109 @@ L = \begin{pmatrix} \mathbf{2} & -1 & -1 & 0 & 0 \\ -1 & \mathbf{3} & -1 & -1 & 
 <p>When you decompose the Laplacian into its eigenvalues and eigenvectors, you perform <em>spectral analysis</em>. Each eigenvalue is a scalar; each eigenvector assigns one real number per node, representing that node's position along a particular structural dimension.</p>
 
 <h3>The Fiedler value $\lambda_2$ and algebraic connectivity</h3>
-<p>The Laplacian always has at least one zero eigenvalue; the number of zero eigenvalues equals exactly the number of disconnected components. For a connected network there is exactly one zero eigenvalue ($\lambda_1 = 0$). The <strong>Fiedler value</strong> $\lambda_2$ — the second smallest eigenvalue — is perhaps the single most important number in ONA:</p>
+<p>The Laplacian always has at least one zero eigenvalue; the number of zero eigenvalues equals exactly the number of disconnected components. For a connected network there is exactly one zero eigenvalue ($\lambda_1 = 0$). The <strong>Fiedler value</strong> $\lambda_2$, the second smallest eigenvalue, is perhaps the single most important number in ONA:</p>
 <ul style="list-style:none;padding:0;margin:1rem 0;">
   <li style="padding:0.4rem 0;border-bottom:1px solid var(--rule);">$\lambda_2$ <strong>large</strong> → densely knit, rapid diffusion, resilient to removal of individuals.</li>
   <li style="padding:0.4rem 0;border-bottom:1px solid var(--rule);">$\lambda_2$ <strong>small</strong> → loosely held together, bottleneck paths, load-bearing connectors.</li>
-  <li style="padding:0.4rem 0;">$\lambda_2 = 0$ → literally disconnected — two or more groups with no path between them. More precisely: the number of zero eigenvalues tells you exactly how many disconnected components exist. When $\lambda_2$ has joined $\lambda_1$ at zero, the Fiedler value loses its meaning as a connectivity measure; analyse each component separately.</li>
+  <li style="padding:0.4rem 0;">$\lambda_2 = 0$ → literally disconnected : two or more groups with no path between them. More precisely: the number of zero eigenvalues tells you exactly how many disconnected components exist. When $\lambda_2$ has joined $\lambda_1$ at zero, the Fiedler value loses its meaning as a connectivity measure; analyse each component separately.</li>
 </ul>
 
-<h3>The Cheeger inequality: a formal bound on silos</h3>
-<p>The connection between $\lambda_2$ and organisational fragmentation is not merely intuitive — it is a theorem. Define the <strong>conductance</strong> (or Cheeger constant) of a graph as:</p>
-$$h(G) = \min_{S \subset V,\, |S| \leq n/2} \frac{|\partial S|}{\text{vol}(S)}$$
-<p>where $|\partial S|$ is the number of edges leaving the set $S$ and $\text{vol}(S) = \sum_{i \in S} d_i$ is the total degree inside $S$. Conductance measures the bottleneckedness of the worst cut — the ratio of boundary edges to internal volume. A small conductance means there exists a large subgroup very poorly connected to the rest of the network.</p>
-<p>The <strong>Cheeger inequality</strong> relates $\lambda_2$ to $h(G)$ with two-sided bounds:</p>
-$$\frac{\lambda_2}{2} \leq h(G) \leq \sqrt{2\lambda_2}$$
-<p>This is a profound result. The left inequality says: if $\lambda_2$ is small, conductance must be small — there provably exists a sparse cut somewhere in the network. A small Fiedler value is not just a <em>signal</em> of silos; it is a <em>proof</em> of their existence. The right inequality says the Fiedler vector finds that cut efficiently — the threshold cut on $v_2$ achieves conductance at most $\sqrt{2\lambda_2}$, within a bounded factor of optimal.</p>
+
+<h3 id="sign-degeneracy">Sign ambiguity, symmetry, and eigenvalue degeneracy</h3>
+
+<p>The Fiedler vector is defined only up to a sign: if $v$ solves $Lv = \lambda_2 v$, so does $-v$. A different numerical solver could return the flipped vector, with Bo and Dev positive and Cy and Eve negative. What is not arbitrary is the <em>relative</em> sign between nodes (same side of the cut means same sign), the magnitude of each entry, and $\lambda_2$ itself. In practice, always apply a sign convention before displaying or comparing Fiedler vectors, and never interpret the raw sign of a single entry in isolation.</p>
+
+<h3>What happens when the network is three-fold symmetric?</h3>
+
+<p>In the five-node example, Dev hangs off Bo and Eve hangs off Cy, but Ana has no pendant. Suppose you add <strong>Ana2</strong> as a leaf off Ana, giving every triangle node exactly one pendant arm. The network is now three-fold symmetric: the three arms (Ana&ndash;Ana2, Bo&ndash;Dev, Cy&ndash;Eve) are structurally interchangeable.</p>
+
+<p>The spectrum reveals the problem immediately. With three equivalent communities, no single straight cut separates the network into two balanced halves better than any other. Mathematically, $\lambda_2$ is now a <strong>degenerate eigenvalue</strong> shared by two linearly independent eigenvectors: $\lambda_2 = \lambda_3 \approx 0.697$. Any linear combination of these two eigenvectors is also a valid Fiedler vector. The algorithm picks one based on numerical noise, and a different run could return a completely different-looking result that is equally correct.</p>
+
+<figure>
+<svg viewBox="0 0 620 200" xmlns="http://www.w3.org/2000/svg" font-family="Georgia,serif" font-size="13">
+  <!-- 5-node spectrum: clear gap -->
+  <text x="130" y="18" text-anchor="middle" font-size="11" fill="#8a8480" font-family="JetBrains Mono,monospace" letter-spacing="0.1em">5-NODE NETWORK</text>
+  <text x="130" y="34" text-anchor="middle" font-size="10" fill="#8a8480">clear eigengap</text>
+  <!-- bars -->
+  <rect x="20"  y="140" width="20" height="2"   fill="#1a4a7a" rx="1"/>
+  <rect x="55"  y="105" width="20" height="37"  fill="#c44e52" rx="1"/>
+  <rect x="90"  y="88"  width="20" height="54"  fill="#1a4a7a" rx="1"/>
+  <rect x="125" y="42"  width="20" height="100" fill="#1a4a7a" rx="1"/>
+  <rect x="160" y="28"  width="20" height="114" fill="#1a4a7a" rx="1"/>
+  <!-- labels -->
+  <text x="30"  y="155" text-anchor="middle" font-size="9" fill="#4a4540">0.00</text>
+  <text x="65"  y="100" text-anchor="middle" font-size="9" fill="#c44e52" font-weight="bold">0.70</text>
+  <text x="100" y="83"  text-anchor="middle" font-size="9" fill="#4a4540">1.38</text>
+  <text x="135" y="37"  text-anchor="middle" font-size="9" fill="#4a4540">3.62</text>
+  <text x="170" y="23"  text-anchor="middle" font-size="9" fill="#4a4540">4.30</text>
+  <!-- gap arrow -->
+  <line x1="65" y1="95" x2="100" y2="95" stroke="#c44e52" stroke-width="1.5" marker-end="url(#arr)"/>
+  <text x="83" y="91" text-anchor="middle" font-size="9" fill="#c44e52">gap</text>
+  <!-- baseline -->
+  <line x1="15" y1="142" x2="190" y2="142" stroke="#ddd8d0" stroke-width="1"/>
+  <!-- x-labels -->
+  <text x="30"  y="170" text-anchor="middle" font-size="9" fill="#8a8480">&#955;&#8321;</text>
+  <text x="65"  y="170" text-anchor="middle" font-size="9" fill="#c44e52">&#955;&#8322;</text>
+  <text x="100" y="170" text-anchor="middle" font-size="9" fill="#8a8480">&#955;&#8323;</text>
+  <text x="135" y="170" text-anchor="middle" font-size="9" fill="#8a8480">&#955;&#8324;</text>
+  <text x="170" y="170" text-anchor="middle" font-size="9" fill="#8a8480">&#955;&#8325;</text>
+
+  <!-- 6-node spectrum: degenerate -->
+  <text x="430" y="18" text-anchor="middle" font-size="11" fill="#8a8480" font-family="JetBrains Mono,monospace" letter-spacing="0.1em">6-NODE (3-FOLD)</text>
+  <text x="430" y="34" text-anchor="middle" font-size="10" fill="#8a8480">degenerate &#955;&#8322; = &#955;&#8323;</text>
+  <!-- bars -->
+  <rect x="310" y="140" width="20" height="2"   fill="#1a4a7a" rx="1"/>
+  <rect x="345" y="105" width="20" height="37"  fill="#c44e52" rx="1"/>
+  <rect x="380" y="105" width="20" height="37"  fill="#c44e52" rx="1"/>
+  <rect x="415" y="68"  width="20" height="74"  fill="#1a4a7a" rx="1"/>
+  <rect x="450" y="28"  width="20" height="114" fill="#1a4a7a" rx="1"/>
+  <rect x="485" y="28"  width="20" height="114" fill="#1a4a7a" rx="1"/>
+  <!-- labels -->
+  <text x="320"  y="155" text-anchor="middle" font-size="9" fill="#4a4540">0.00</text>
+  <text x="355" y="100" text-anchor="middle" font-size="9" fill="#c44e52" font-weight="bold">0.70</text>
+  <text x="390" y="100" text-anchor="middle" font-size="9" fill="#c44e52" font-weight="bold">0.70</text>
+  <text x="425" y="63"  text-anchor="middle" font-size="9" fill="#4a4540">2.00</text>
+  <text x="460" y="23"  text-anchor="middle" font-size="9" fill="#4a4540">4.30</text>
+  <text x="495" y="23"  text-anchor="middle" font-size="9" fill="#4a4540">4.30</text>
+  <!-- no-gap annotation -->
+  <text x="372" y="91" text-anchor="middle" font-size="9" fill="#c44e52">= same</text>
+  <line x1="355" y1="95" x2="390" y2="95" stroke="#c44e52" stroke-width="1.5"/>
+  <!-- baseline -->
+  <line x1="305" y1="142" x2="515" y2="142" stroke="#ddd8d0" stroke-width="1"/>
+  <!-- x-labels -->
+  <text x="320" y="170" text-anchor="middle" font-size="9" fill="#8a8480">&#955;&#8321;</text>
+  <text x="355" y="170" text-anchor="middle" font-size="9" fill="#c44e52">&#955;&#8322;</text>
+  <text x="390" y="170" text-anchor="middle" font-size="9" fill="#c44e52">&#955;&#8323;</text>
+  <text x="425" y="170" text-anchor="middle" font-size="9" fill="#8a8480">&#955;&#8324;</text>
+  <text x="460" y="170" text-anchor="middle" font-size="9" fill="#8a8480">&#955;&#8325;</text>
+  <text x="495" y="170" text-anchor="middle" font-size="9" fill="#8a8480">&#955;&#8326;</text>
+
+  <!-- divider -->
+  <line x1="255" y1="20" x2="255" y2="180" stroke="#ddd8d0" stroke-width="1" stroke-dasharray="4,3"/>
+</svg>
+<figcaption>Left: the five-node spectrum has a clear eigengap between &#955;&#8322; and &#955;&#8323; (gap &asymp; 0.68), indicating one clean two-way split. Right: adding Ana2 makes the network three-fold symmetric. Now &#955;&#8322; = &#955;&#8323; exactly: a degenerate eigenvalue shared by two eigenvectors. The zero gap signals three natural communities, not two.</figcaption>
+</figure>
+
+<p>The fix follows directly from the eigengap heuristic: a zero (or near-zero) gap between $\lambda_2$ and $\lambda_3$ signals that you need <em>both</em> eigenvectors, and that the network has three natural communities rather than two. Using $v_2$ and $v_3$ jointly as spectral coordinates and applying $k$-means with $k=3$ recovers the three arms (Ana&ndash;Ana2, Bo&ndash;Dev, Cy&ndash;Eve) perfectly.</p>
+
 <div class="callout">
-  <strong>ONA implication of the Cheeger inequality:</strong> When you report that $\lambda_2$ is small, you are not speculating that silos might exist — you are invoking a mathematical guarantee that a sparse cut <em>must</em> exist. The Fiedler vector then identifies exactly where that cut lies. This transforms silo identification from organisational intuition into a formal proof.
+<strong>ONA implication:</strong> Before interpreting the Fiedler vector as a definitive two-way split, check the eigengap. If $\lambda_2 \approx \lambda_3$, the network has (at least) three natural communities and the Fiedler vector alone is unreliable. Use the gap to choose $k$, then run spectral clustering with $k$ eigenvectors.
+</div>
+
+<h3>The Cheeger inequality: a formal bound on silos</h3>
+<p>The connection between $\lambda_2$ and organisational fragmentation is not merely intuitive; it is a theorem. Define the <strong>conductance</strong> (or Cheeger constant) of a graph as:</p>
+$$h(G) = \min_{S \subset V,\, |S| \leq n/2} \frac{|\partial S|}{\text{vol}(S)}$$
+<p>where $|\partial S|$ is the number of edges leaving the set $S$ and $\text{vol}(S) = \sum_{i \in S} d_i$ is the total degree inside $S$. Conductance measures the bottleneckedness of the worst cut, defined as the ratio of boundary edges to internal volume. A small conductance means there exists a large subgroup very poorly connected to the rest of the network.</p>
+<p>The <strong>Cheeger inequality</strong> relates $\lambda_2$ to $h(G)$ with two-sided bounds. Stated for the <em>normalised</em> Laplacian $L_n = D^{-1/2}LD^{-1/2}$, whose Fiedler value we denote $\lambda_2(L_n)$:</p>
+$$\frac{\lambda_2(L_n)}{2} \leq h(G) \leq \sqrt{2\,\lambda_2(L_n)}$$
+<p>This is a profound result. The left inequality says: if $\lambda_2(L_n)$ is small, conductance must be small, meaning there provably exists a sparse cut somewhere in the network. A small Fiedler value of the normalised Laplacian is not just a <em>signal</em> of silos; it is a <em>proof</em> of their existence. The right inequality says the Fiedler vector of $L_n$ finds that cut efficiently: the threshold cut on $v_2$ achieves conductance at most $\sqrt{2\,\lambda_2(L_n)}$, within a bounded factor of optimal. (An analogous two-sided bound exists for the combinatorial Laplacian but with different constants involving maximum degree.)</p>
+<div class="callout">
+  <strong>ONA implication of the Cheeger inequality:</strong> When you report that $\lambda_2(L_n)$ is small, you are not speculating that silos might exist; you are invoking a mathematical guarantee that a sparse cut <em>must</em> exist. The Fiedler vector of $L_n$ then identifies exactly where that cut lies. This transforms silo identification from organisational intuition into a formal proof.
 </div>
 
 <h3>Higher eigenvalues, the eigengap heuristic, and multi-way partitioning</h3>
-<p>The Fiedler vector gives you the best two-way split. The third, fourth, and fifth eigenvectors give finer partitions — spectral coordinates that, when clustered with $k$-means, reveal community structure at any desired resolution. This is <strong>spectral clustering</strong>, finding informal teams and silos invisible on any org chart.</p>
-<p>But how do you know how many communities to look for? The answer lies in the <strong>eigengap heuristic</strong>: the number of natural communities $k$ in the network is indicated by the largest gap in the spectrum of $L$ between consecutive eigenvalues $\lambda_k$ and $\lambda_{k+1}$. When $k$ near-zero eigenvalues are followed by a sudden jump to $\lambda_{k+1}$, the network has $k$ communities that are internally dense and mutually sparse — the spectral structure is telling you exactly how many clusters to request.</p>
+<p>The Fiedler vector gives you the best two-way split. The third, fourth, and fifth eigenvectors give finer partitions, specifically spectral coordinates that, when clustered with $k$-means, reveal community structure at any desired resolution. This is <strong>spectral clustering</strong>, finding informal teams and silos invisible on any org chart.</p>
+<p>But how do you know how many communities to look for? The answer lies in the <strong>eigengap heuristic</strong>: the number of natural communities $k$ in the network is indicated by the largest gap in the spectrum of $L$ between consecutive eigenvalues $\lambda_k$ and $\lambda_{k+1}$. When $k$ near-zero eigenvalues are followed by a sudden jump to $\lambda_{k+1}$, the network has $k$ communities that are internally dense and mutually sparse; the spectral structure is telling you exactly how many clusters to request.</p>
 <figure>
   <svg viewBox="0 0 480 160" xmlns="http://www.w3.org/2000/svg" style="max-width:460px;">
     <!-- axes -->
@@ -592,7 +674,7 @@ $$\frac{\lambda_2}{2} \leq h(G) \leq \sqrt{2\lambda_2}$$
 <section id="drawing">
 <h2>Spectral graph drawing: eigenvectors as geometry</h2>
 <p>The eigenvectors of the Laplacian can serve as <em>spatial coordinates</em>, producing drawings of the network that reveal its geometry in a rigorous way. This is <strong>spectral graph drawing</strong> (Hall 1970), the foundation of most network visualisations in ONA reports.</p>
-<p>Recall that $v_1$ is the constant vector — it carries no structural information. $v_2$ (the Fiedler vector) assigns every node a real number reflecting its position across the primary structural division. $v_3$ captures the next structural dimension, orthogonal to the first. Using these as $x$- and $y$-coordinates, then drawing edges as straight lines, gives the <em>spectral layout</em>.</p>
+<p>Recall that $v_1$ is the constant vector; it carries no structural information. $v_2$ (the Fiedler vector) assigns every node a real number reflecting its position across the primary structural division. $v_3$ captures the next structural dimension, orthogonal to the first. Using these as $x$- and $y$-coordinates, then drawing edges as straight lines, gives the <em>spectral layout</em>.</p>
 
 <figure>
   <!-- Spectral drawing concept illustration -->
@@ -648,20 +730,20 @@ $$\frac{\lambda_2}{2} \leq h(G) \leq \sqrt{2\lambda_2}$$
     <ellipse cx="410" cy="107" rx="38" ry="22" fill="none" stroke="#1a7a4a" stroke-width="1.5" stroke-dasharray="4,3" opacity="0.6"/>
     <ellipse cx="485" cy="150" rx="18" ry="14" fill="none" stroke="#8b2000" stroke-width="1.5" stroke-dasharray="4,3" opacity="0.6"/>
   </svg>
-  <figcaption>Left: the same graph drawn with an arbitrary layout — structure is hidden. Right: the spectral layout places nodes as $(v_2, v_3)$ coordinates. Community structure becomes visually self-evident; nodes within each community cluster tightly because intra-community springs are strong.</figcaption>
+  <figcaption>Left: the same graph drawn with an arbitrary layout where structure is hidden. Right: the spectral layout places nodes as $(v_2, v_3)$ coordinates. Community structure becomes visually self-evident; nodes within each community cluster tightly because intra-community springs are strong.</figcaption>
 </figure>
 
 <div class="callout">
-  <strong>Why is this optimal?</strong> By the Courant-Fisher theorem, $v_2$ is the unit vector that <em>minimises</em> the Laplacian quadratic form $\sum_{(i,j)\in E}(x_i - x_j)^2$. This sum is the total squared edge length in the layout. Minimising it means connected nodes are pulled as close together as possible, globally and simultaneously.
+  <strong>Why is this optimal?</strong> By the Rayleigh-Ritz characterisation (a consequence of the Courant-Fischer theorem), $v_2$ is the unit vector orthogonal to the constant vector $\mathbf{1}$ that <em>minimises</em> the Laplacian quadratic form $\sum_{(i,j)\in E}(x_i - x_j)^2$. The orthogonality constraint $x \perp \mathbf{1}$ removes the trivial constant solution; what remains is the direction of minimum non-trivial variation. This sum equals the total squared edge length in the layout. Minimising it means connected nodes are pulled as close together as possible, globally and simultaneously.
 </div>
 
 <h3>Physical interpretation: springs</h3>
-<p>Model every edge as an ideal spring with spring constant equal to its weight. Pin a few nodes to fixed positions; let the rest settle into mechanical equilibrium. Physics tells us equilibrium minimises total spring potential energy — $\frac{1}{2}\sum_{(i,j)} w_{ij}(x_i - x_j)^2$ — which is exactly the Laplacian quadratic form. The eigenvectors are the natural vibration modes of this spring network. When community structure exists, intra-community springs are dense and strong, pulling community members close; the sparser inter-community springs pull clusters toward each other but cannot merge them.</p>
+<p>Model every edge as an ideal spring with spring constant equal to its weight. Pin a few nodes to fixed positions; let the rest settle into mechanical equilibrium. Physics tells us equilibrium minimises total spring potential energy, $\frac{1}{2}\sum_{(i,j)} w_{ij}(x_i - x_j)^2$, which is exactly the Laplacian quadratic form. The eigenvectors are the natural vibration modes of this spring network. When community structure exists, intra-community springs are dense and strong, pulling community members close; the sparser inter-community springs pull clusters toward each other but cannot merge them.</p>
 
 <h3>Extension to higher dimensions</h3>
 <p>A 3D layout uses $v_2, v_3, v_4$ as spatial coordinates. More generally, a $k$-dimensional spectral embedding uses $v_2$ through $v_{k+1}$. For regular geometric objects this is exact: the vertices of a dodecahedron, embedded using its three-dimensional symmetry eigenspace, reproduce the dodecahedron precisely. <em>The spectrum knows the geometry.</em></p>
 
-<h3>When does spectral drawing work — and when does it not?</h3>
+<h3>When does spectral drawing work, and when does it not?</h3>
 
 <figure>
   <!-- Drawability diagram: structured vs expander -->
@@ -723,34 +805,34 @@ $$\frac{\lambda_2}{2} \leq h(G) \leq \sqrt{2\lambda_2}$$
     <line x1="340" y1="80"  x2="460" y2="65"  stroke="#c09090" stroke-width="1.2"/>
     <line x1="430" y1="190" x2="475" y2="130" stroke="#c09090" stroke-width="1.2"/>
   </svg>
-  <figcaption>Left: a network with three communities (low $\lambda_2$) draws cleanly — clusters are spatially separated and edges are short. Right: a random 4-regular graph (high $\lambda_2$) produces a tangle regardless of the algorithm used. The tangle is not a visualisation failure; it is a structural fact.</figcaption>
+  <figcaption>Left: a network with three communities (low $\lambda_2$) draws cleanly: clusters are spatially separated and edges are short. Right: a random 4-regular graph (high $\lambda_2$) produces a tangle regardless of the algorithm used. The tangle is not a visualisation failure; it is a structural fact.</figcaption>
 </figure>
 
-<p>The usefulness of a spectral layout depends directly on $\lambda_2$. A good 2D drawing requires a partition of nodes into two large sets with a small boundary — and that is exactly what a small Fiedler value certifies. When $\lambda_2$ is large (an <em>expander</em> graph), every large subset has many boundary edges, so no spatial separation is possible without making many edges long.</p>
-<p><strong>Practical diagnostic:</strong> before investing time refining a network visualisation, compute $\lambda_2$. If $\lambda_2 \gtrsim 10/\sqrt{n}$, no drawing algorithm will help. Report the high connectivity as the primary finding — it is itself evidence that the organisation lacks silo structure.</p>
+<p>The usefulness of a spectral layout depends directly on $\lambda_2$. A good 2D drawing requires a partition of nodes into two large sets with a small boundary, and that is exactly what a small Fiedler value certifies. When $\lambda_2$ is large (an <em>expander</em> graph), every large subset has many boundary edges, so no spatial separation is possible without making many edges long.</p>
+<p><strong>Practical diagnostic:</strong> before investing time refining a network visualisation, compute $\lambda_2$. If $\lambda_2 \gtrsim 10/\sqrt{n}$, no drawing algorithm will help. (This is a practical rule of thumb, not a hard theorem; treat it as a prompt to check rather than a verdict.) Report the high connectivity as the primary finding; it is itself evidence that the organisation lacks silo structure.</p>
 </section>
 
 <!-- ══ S7 · CENTRALITY ════════════════════════════════════════════════════════ -->
 <section id="centrality">
 <h2>Centrality through the eigenvector lens</h2>
-<p>Degree centrality is a matrix operation but not a spectral one. <strong>Eigenvector centrality</strong> is. The idea: not all connections are equally valuable — a connection to a well-connected person matters more than a connection to an isolated one. Eigenvector centrality formalises this recursively: your score is proportional to the sum of your neighbours' scores.</p>
-<p>Mathematically, find the leading eigenvector of $A$ — the eigenvector corresponding to the largest eigenvalue $\lambda_1$. Each node's entry is its eigenvector centrality score. In ONA this identifies not just the most connected people but the most <em>influentially positioned</em> — those who can reach the broadest and most well-connected parts of the organisation quickly.</p>
-<p><strong>Katz centrality</strong> and <strong>PageRank</strong> extend this idea with a decay parameter, preventing extremely central nodes from overwhelming everyone else. PageRank, originally Google's link-scoring algorithm for directed networks, translates directly into "whose attention and endorsement matters most?" — and it handles two failure modes that make simple eigenvector centrality problematic on directed graphs.</p>
+<p>Degree centrality is a matrix operation but not a spectral one. <strong>Eigenvector centrality</strong> is. The idea: not all connections are equally valuable: a connection to a well-connected person matters more than a connection to an isolated one. Eigenvector centrality formalises this recursively: your score is proportional to the sum of your neighbours' scores.</p>
+<p>Mathematically, find the leading eigenvector of $A$, specifically the eigenvector corresponding to the <em>largest</em> eigenvalue $\lambda_{\max}(A)$ (distinct from the Laplacian eigenvalues $\lambda_1 \leq \lambda_2 \leq \cdots$). Each node's entry is its eigenvector centrality score. In ONA this identifies not just the most connected people but the most <em>influentially positioned</em> , meaning those who can reach the broadest and most well-connected parts of the organisation quickly.</p>
+<p><strong>Katz centrality</strong> and <strong>PageRank</strong> extend this idea with a decay parameter, preventing extremely central nodes from overwhelming everyone else. PageRank, originally Google's link-scoring algorithm for directed networks, translates directly into "whose attention and endorsement matters most?", and it handles two failure modes that make simple eigenvector centrality problematic on directed graphs.</p>
 <p>First, the <em>dead-end problem</em>: a node with no outgoing edges (a "dangling node") absorbs centrality from its predecessors but returns nothing, causing scores to drain out of the network. Second, the <em>spider-trap problem</em>: a group of nodes that link only among themselves can accumulate all the centrality in the graph, starving every other node. PageRank fixes both with a <strong>damping factor</strong> $\alpha$ (typically $0.85$):</p>
 $$\text{PR}(i) = \frac{1-\alpha}{n} + \alpha \sum_{j \to i} \frac{\text{PR}(j)}{\text{out-degree}(j)}$$
-<p>With probability $\alpha$ the random walker follows an actual edge; with probability $1-\alpha$ it teleports to a uniformly random node. This teleportation ensures every node receives a minimum baseline score and prevents probability mass from pooling in traps. In organisational terms, the teleportation models the possibility that information or attention can reach any part of the organisation through informal channels regardless of formal reporting lines — a realistic assumption.</p>
+<p>With probability $\alpha$ the random walker follows an actual edge; with probability $1-\alpha$ it teleports to a uniformly random node. This teleportation ensures every node receives a minimum baseline score and prevents probability mass from pooling in traps. In organisational terms, the teleportation models the possibility that information or attention can reach any part of the organisation through informal channels regardless of formal reporting lines, a realistic assumption.</p>
 </section>
 
 <!-- ══ S7b · GFT ══════════════════════════════════════════════════════════════ -->
 <section id="gft">
 <h2>The Graph Fourier Transform: reading organisational signals</h2>
-<p>In the Laplacian interlude we described the eigenvectors as "natural vibration modes" of the network. This analogy has a precise mathematical extension: just as the classical Fourier transform decomposes a time signal into frequency components, the <strong>Graph Fourier Transform</strong> (GFT) decomposes an organisational signal — any scalar quantity defined on nodes — into contributions from each structural mode.</p>
+<p>In the <a href="#interlude">Laplacian interlude</a> that follows this section, the eigenvectors are described as "natural vibration modes" of the network. This analogy has a precise mathematical extension: just as the classical Fourier transform decomposes a time signal into frequency components, the <strong>Graph Fourier Transform</strong> (GFT) decomposes an organisational signal (any scalar quantity defined on nodes) into contributions from each structural mode.</p>
 <p>Define an <em>organisational signal</em> $f \in \mathbb{R}^n$ as any vector assigning one value per node: employee engagement scores, performance ratings, absenteeism counts, or even binary indicators of "has left the company." The GFT of $f$ with respect to the Laplacian eigenvectors $\{v_1, v_2, \ldots, v_n\}$ is simply the projection onto each eigenvector:</p>
 $$\hat{f}(k) = v_k^T f = \sum_{i=1}^n f(i) \cdot v_k(i)$$
 <p>The coefficient $\hat{f}(k)$ tells you how strongly the signal $f$ "resonates" with the $k$-th structural mode. The reconstruction is exact: $f = \sum_k \hat{f}(k) \cdot v_k$.</p>
 
 <h3>Low-frequency vs high-frequency organisational signals</h3>
-<p>The analogy with audio frequencies is precise. Eigenvectors with small eigenvalues correspond to <strong>low frequencies</strong> — smoothly varying patterns where neighbouring nodes in the network have similar values. Eigenvectors with large eigenvalues correspond to <strong>high frequencies</strong> — rapidly oscillating patterns where adjacent nodes differ sharply.</p>
+<p>The analogy with audio frequencies is precise. Eigenvectors with small eigenvalues correspond to <strong>low frequencies</strong> , that is, smoothly varying patterns where neighbouring nodes in the network have similar values. Eigenvectors with large eigenvalues correspond to <strong>high frequencies</strong> , specifically rapidly oscillating patterns where adjacent nodes differ sharply.</p>
 
 <figure>
   <svg viewBox="0 0 520 180" xmlns="http://www.w3.org/2000/svg" style="max-width:500px;">
@@ -792,58 +874,58 @@ $$\hat{f}(k) = v_k^T f = \sum_{i=1}^n f(i) \cdot v_k(i)$$
     <line x1="378" y1="135" x2="365" y2="115" stroke="#aaa" stroke-width="1.5"/>
     <text x="395" y="165" text-anchor="middle" font-size="9" fill="#666" font-family="Source Serif 4,serif" font-style="italic">random noise: no structural pattern</text>
   </svg>
-  <figcaption>Low-frequency signals (left) vary smoothly — adjacent nodes share similar values. This is the signature of a structural pattern, such as a silo with uniformly low engagement. High-frequency signals (right) oscillate rapidly between neighbours — the signature of random noise with no structural cause.</figcaption>
+  <figcaption>Low-frequency signals (left) vary smoothly; adjacent nodes share similar values. This is the signature of a structural pattern, such as a silo with uniformly low engagement. High-frequency signals (right) oscillate rapidly between neighbours, the signature of random noise with no structural cause.</figcaption>
 </figure>
 
-<p>In ONA practice, this decomposition is immediately useful. If a signal like employee engagement scores has most of its energy in the low-frequency eigenvectors (small $\lambda_k$), the pattern is <em>structurally caused</em> — it follows community boundaries, and the relevant intervention is structural (bridging the silo, rotating people across teams). If most energy is in high-frequency components, the variation is <em>locally random</em> — idiosyncratic individual differences that do not follow any network pattern, and the relevant intervention is individual rather than structural.</p>
-<p>The GFT also enables <strong>network smoothing</strong>: multiply each Fourier coefficient by a filter function $g(\lambda_k)$ before reconstructing. Setting $g(\lambda_k) = e^{-t\lambda_k}$ gives the heat diffusion filter — exactly the heat equation on the graph — smoothing away high-frequency noise while preserving low-frequency structural signals. This is a principled method for denoising ONA data before community detection or centrality computation.</p>
+<p>In ONA practice, this decomposition is immediately useful. If a signal like employee engagement scores has most of its energy in the low-frequency eigenvectors (small $\lambda_k$), the pattern is <em>structurally caused</em> : it follows community boundaries, and the relevant intervention is structural (bridging the silo, rotating people across teams). If most energy is in high-frequency components, the variation is <em>locally random</em> , reflecting idiosyncratic individual differences that do not follow any network pattern, and the relevant intervention is individual rather than structural.</p>
+<p>The GFT also enables <strong>network smoothing</strong>: multiply each Fourier coefficient by a filter function $g(\lambda_k)$ before reconstructing. Setting $g(\lambda_k) = e^{-t\lambda_k}$ gives the heat diffusion filter, which is exactly the heat equation on the graph, smoothing away high-frequency noise while preserving low-frequency structural signals. This is a principled method for denoising ONA data before community detection or centrality computation.</p>
 </section>
 
 <!-- ══ S8 · POWERS ════════════════════════════════════════════════════════════ -->
 <section id="powers">
 <h2>Powers of the adjacency matrix: walks and reachability</h2>
-<p>When you multiply $A$ by itself, entry $(i,j)$ of $A^2$ gives the number of <strong>walks of length exactly 2</strong> between $i$ and $j$ — the number of mutual connections they share. $A^3$ gives walks of length 3, and so on.</p>
+<p>When you multiply $A$ by itself, entry $(i,j)$ of $A^2$ gives the number of <strong>walks of length exactly 2</strong> between $i$ and $j$ , the number of mutual connections they share. $A^3$ gives walks of length 3, and so on.</p>
 <p>The diagonal of $A^2$ recovers each node's degree. The off-diagonal entries of $A^2$ are the genuinely new information: how many people do two employees share as common contacts? High values signal strong <em>structural equivalence</em>.</p>
-<p>Crucially, $(A^3)_{ii} / 2$ gives the triangle count for node $i$ directly. High triangle counts mean a dense clique; low triangle counts with high degree identify <strong>brokers</strong> — people connecting otherwise-separate groups. This is the computational root of Ronald Burt's structural holes concept.</p>
+<p>Crucially, $(A^3)_{ii} / 2$ gives the triangle count for node $i$ directly. The reason: a closed walk of length 3 starting and ending at $i$ must traverse one triangle (since there are no self-loops in a simple graph), and each triangle can be traversed in two directions (clockwise and counterclockwise), so each triangle contributes exactly 2 to $(A^3)_{ii}$. High triangle counts mean a dense clique; low triangle counts with high degree identify <strong>brokers</strong> : people connecting otherwise-separate groups. This is the computational root of Ronald Burt's structural holes concept.</p>
 </section>
 
 <!-- ══ S9 · STRUCTURAL HOLES ═════════════════════════════════════════════════ -->
 <section id="holes">
 <h2>Structural holes, betweenness, and the constraint matrix</h2>
-<p>Burt's structural hole theory argues that the most strategically valuable position is <em>between</em> cliques — controlling information and resource flows across gaps. The <strong>constraint index</strong> that measures this is derived from a series of matrix operations on $A$: if all your contacts already know each other well, you are highly constrained. If your contacts belong to disconnected worlds, you are an unconstrained broker.</p>
+<p>Burt's structural hole theory argues that the most strategically valuable position is <em>between</em> cliques , controlling information and resource flows across gaps. The <strong>constraint index</strong> that measures this is derived from a series of matrix operations on $A$: if all your contacts already know each other well, you are highly constrained. If your contacts belong to disconnected worlds, you are an unconstrained broker.</p>
 <p><strong>Betweenness centrality</strong> measures what fraction of all shortest paths pass through you. High betweenness is the clearest computational signal of a critical bottleneck: information, decisions, or resources must flow through that person, and their absence would dramatically disrupt coordination.</p>
 
 <h3>On node-removal simulation</h3>
-<p>Simulating node removals and tracking $\lambda_2$ is a sound resilience diagnostic. Note that removing a node reduces the matrix dimension — you recompute the Laplacian of the reduced graph, not perturb the original. For large networks, an efficient shortcut is to identify edges bridging nodes with very different Fiedler vector values: those edges, when severed, produce the largest drops in algebraic connectivity.</p>
+<p>Simulating node removals and tracking $\lambda_2$ is a sound resilience diagnostic. Note that removing a node reduces the matrix dimension; you recompute the Laplacian of the reduced graph, not perturb the original. For large networks, an efficient shortcut is to identify edges bridging nodes with very different Fiedler vector values: those edges, when severed, produce the largest drops in algebraic connectivity.</p>
 </section>
 
 <!-- ══ S10 · NORMALISED LAPLACIAN ════════════════════════════════════════════ -->
 <section id="normlaplacian">
 <h2>The normalised Laplacian and random walks</h2>
 <p>The <strong>normalised Laplacian</strong> $L_\text{norm} = D^{-1/2} L D^{-1/2}$ adjusts for degree differences. (The <a href="#interlude">interlude</a> explains precisely why: the diagonal becomes uniformly $1$ and off-diagonals become $-1/\sqrt{d_i d_j}$, correcting for the dominance of high-degree nodes.) Its eigenvalues are always in $[0, 2]$, making them comparable across networks of different sizes and densities.</p>
-<p>The <strong>spectral gap</strong> — the separation between the largest and second-largest eigenvalue of $D^{-1/2} A D^{-1/2}$ — controls how fast a random walk mixes. A large spectral gap means the walk quickly reaches every part of the network regardless of starting position: the organisation diffuses information rapidly, with no isolated echo chambers. A small spectral gap means the walk gets trapped in local neighbourhoods: fragmented groups where information diffuses locally but barely crosses community boundaries.</p>
+<p>The <strong>spectral gap</strong> (defined as $\lambda_2(L_n)$ of the normalised Laplacian, or equivalently the separation between the largest and second-largest eigenvalue of $D^{-1/2} A D^{-1/2}$), and this quantity controls how fast a random walk mixes. A large spectral gap means the walk quickly reaches every part of the network regardless of starting position: the organisation diffuses information rapidly, with no isolated echo chambers. A small spectral gap means the walk gets trapped in local neighbourhoods: fragmented groups where information diffuses locally but barely crosses community boundaries.</p>
 </section>
 
 <!-- ══ S11 · DETERMINANT ══════════════════════════════════════════════════════ -->
 <section id="determinant">
 <h2>The determinant and network signatures</h2>
-<p>The characteristic polynomial of $A$ — whose roots are the eigenvalues — is a compact algebraic fingerprint of the entire network structure. A note of caution: two networks with the same characteristic polynomial are called <strong>cospectral</strong>, sharing all spectral properties while potentially differing in structure. While theoretically significant, cospectral pairs are combinatorially rare and require very specific structural symmetries to construct. In real-world ONA data — noisy, continuous-weighted, and measured on networks of dozens to thousands of nodes — the probability of two genuinely different organisational networks having identical spectra is mathematically negligible. For practical ONA purposes the spectrum is a <em>unique fingerprint</em> of the organisation. The cospectral caveat is important for theoretical completeness but should not discourage practitioners from using spectral signatures as reliable identifiers for longitudinal and cross-unit comparison.</p>
-<p>A team whose spectrum is shifting toward smaller Fiedler values, shrinking spectral gap, and increasingly unequal eigenvector centrality is becoming more siloed, more bottlenecked, and more hierarchical — often visible in the spectrum before it shows up in engagement surveys or performance data.</p>
+<p>The characteristic polynomial of $A$ (whose roots are the eigenvalues) is a compact algebraic fingerprint of the entire network structure. A note of caution: two networks with the same characteristic polynomial are called <strong>cospectral</strong>, sharing all spectral properties while potentially differing in structure. While theoretically significant, cospectral pairs are combinatorially rare and require very specific structural symmetries to construct. In real-world ONA data (noisy, continuous-weighted, and measured on networks of dozens to thousands of nodes) the probability of two genuinely different organisational networks having identical spectra is mathematically negligible. For practical ONA purposes the spectrum is a <em>reliable structural signature</em> for longitudinal tracking within the same organisation. The cospectral caveat is important for theoretical completeness but should not discourage practitioners from using spectral signatures to monitor structural change over time. For cross-unit comparison, treat shared spectral properties as strong evidence of structural similarity rather than proof of identical structure.</p>
+<p>A team whose spectrum is shifting toward smaller Fiedler values, shrinking spectral gap, and increasingly unequal eigenvector centrality is becoming more siloed, more bottlenecked, and more hierarchical, often visible in the spectrum before it shows up in engagement surveys or performance data.</p>
 </section>
 
 <!-- ══ S12 · DATA QUALITY ═════════════════════════════════════════════════════ -->
 <section id="dataquality">
 <h2>A note on data quality, sparsity, and thresholds</h2>
-<p>ONA matrices are almost always extremely sparse. The choice of threshold for binarising weighted data has a substantial effect on spectral results. Eigenvalue stability under threshold variation is a useful diagnostic: results that change dramatically when the threshold moves by a small amount should be treated with caution. For large, sparse networks, use sparse eigensolvers — Lanczos iteration and similar algorithms that exploit sparsity rather than densifying the matrix, enabling efficient decomposition of networks with tens of thousands of nodes.</p>
+<p>ONA matrices are almost always extremely sparse. The choice of threshold for binarising weighted data has a substantial effect on spectral results. Eigenvalue stability under threshold variation is a useful diagnostic: results that change dramatically when the threshold moves by a small amount should be treated with caution. For large, sparse networks, use sparse eigensolvers such as Lanczos iteration and similar algorithms that exploit sparsity rather than densifying the matrix, enabling efficient decomposition of networks with tens of thousands of nodes.</p>
 
 <h3>Thresholding strategies for spectral comparisons</h3>
 <p>When comparing networks across departments or time periods, the choice of thresholding strategy affects not just individual results but the <em>comparability</em> of spectral quantities across contexts. Three strategies differ in what they hold constant:</p>
 <ul style="list-style:disc;margin:0.8rem 0 1rem 1.5rem;line-height:2.1;">
-  <li><strong>Fixed weight threshold:</strong> retain all ties with weight above an absolute value (e.g., survey score $\geq 4/5$). Simple and interpretable, but produces networks of very different density across departments — a small tight-knit team will have far more edges surviving the cut than a large diffuse one, making spectral comparison unfair.</li>
-  <li><strong>Fixed density threshold:</strong> retain the top $p\%$ of strongest ties in each network (e.g., top 10%). This ensures every network has the same edge density, making $\lambda_2$ and the spectral gap directly comparable across units of different size. The cost is that the absolute meaning of an edge varies — the "top 10% tie" in a highly connected department is a weaker relationship than in a sparse one.</li>
-  <li><strong>Disparity filter:</strong> retain edges that are statistically surprising given each node's degree — edges that carry disproportionately high weight relative to what a random distribution across that node's ties would predict. This preserves the multi-scale structure of the network rather than imposing a uniform density, and is the most principled approach for heterogeneous organisations where tie strength distributions vary widely.</li>
+  <li><strong>Fixed weight threshold:</strong> retain all ties with weight above an absolute value (e.g., survey score $\geq 4/5$). Simple and interpretable, but produces networks of very different density across departments: a small tight-knit team will have far more edges surviving the cut than a large diffuse one, making spectral comparison unfair.</li>
+  <li><strong>Fixed density threshold:</strong> retain the top $p\%$ of strongest ties in each network (e.g., top 10%). This ensures every network has the same edge density, making $\lambda_2$ and the spectral gap directly comparable across units of different size. The cost is that the absolute meaning of an edge varies; the "top 10% tie" in a highly connected department is a weaker relationship than in a sparse one.</li>
+  <li><strong>Disparity filter:</strong> retain edges that are statistically surprising given each node's degree, specifically edges that carry disproportionately high weight relative to what a random distribution across that node's ties would predict. This preserves the multi-scale structure of the network rather than imposing a uniform density, and is the most principled approach for heterogeneous organisations where tie strength distributions vary widely.</li>
 </ul>
-<p>For longitudinal tracking within a single organisation, fixed density thresholding is usually the right choice — it ensures that changes in $\lambda_2$ over time reflect genuine structural change rather than shifts in the overall volume of measured interactions.</p>
+<p>For longitudinal tracking within a single organisation, fixed density thresholding is usually the right choice, as it ensures that changes in $\lambda_2$ over time reflect genuine structural change rather than shifts in the overall volume of measured interactions.</p>
 </section>
 
 <!-- ══ S12b · TEMPORAL ════════════════════════════════════════════════════════ -->
@@ -894,23 +976,23 @@ $$\hat{f}(k) = v_k^T f = \sum_{i=1}^n f(i) \cdot v_k(i)$$
     <text x="130" y="158" text-anchor="middle" font-size="8" fill="#888" font-family="JetBrains Mono,monospace">Q1</text>
     <text x="210" y="158" text-anchor="middle" font-size="8" fill="#888" font-family="JetBrains Mono,monospace">Q2</text>
     <text x="300" y="158" text-anchor="middle" font-size="8" fill="#888" font-family="JetBrains Mono,monospace">Q3</text>
-    <text x="420" y="158" text-anchor="middle" font-size="8" fill="#888" font-family="JetBrains Mono,monospace">Q5</text>
+    <text x="420" y="158" text-anchor="middle" font-size="8" fill="#888" font-family="JetBrains Mono,monospace">Q4</text>
   </svg>
   <figcaption>Schematic spectral signature over time. Both the Fiedler value $\lambda_2$ (solid blue) and the spectral gap (dashed green) dip sharply during a restructuring event, then recover as the organisation re-integrates. The spectral signature often shows these effects before they appear in engagement surveys or productivity metrics.</figcaption>
 </figure>
 
 <h3>What to watch for</h3>
-<p>A <strong>falling $\lambda_2$</strong> is the earliest quantitative warning sign of organisational fragmentation. Communities are becoming more isolated; bridge connections are being lost. If this trend precedes a restructuring by one or two quarters, it suggests the restructuring was partly precipitated by pre-existing structural weakening — not just a top-down decision.</p>
-<p>A <strong>falling spectral gap</strong> signals slowing information diffusion. Even if the organisation remains formally connected ($\lambda_2 > 0$), a shrinking gap means the random walk on the network is mixing more slowly — ideas and decisions take longer to percolate. This often precedes the formation of information silos that later calcify into structural ones.</p>
-<p>A <strong>merger or acquisition</strong> initially shows as a sudden increase in $n$ (network size) with a sharp drop in $\lambda_2$ — the two separate networks are now nominally joined but have few bridge edges. A successful integration is visible in the gradual rise of $\lambda_2$ and spectral gap over subsequent quarters as cross-organisational ties form. A failed integration stays at low $\lambda_2$ indefinitely, with the two original communities remaining spectrally distinct.</p>
-<p>Tracking the <strong>distribution of the full spectrum</strong>, not just $\lambda_2$, over time gives a richer picture. The number of near-zero eigenvalues tells you how many effectively disconnected communities exist at each time point. Rising eigenvalue variance signals increasing heterogeneity — some parts of the network becoming more connected while others fragment.</p>
+<p>A <strong>falling $\lambda_2$</strong> is the earliest quantitative warning sign of organisational fragmentation. Communities are becoming more isolated; bridge connections are being lost. If this trend precedes a restructuring by one or two quarters, it suggests the restructuring was partly precipitated by pre-existing structural weakening rather than just a top-down decision.</p>
+<p>A <strong>falling spectral gap</strong> signals slowing information diffusion. Even if the organisation remains formally connected ($\lambda_2 > 0$), a shrinking gap means the random walk on the network is mixing more slowly, meaning ideas and decisions take longer to percolate. This often precedes the formation of information silos that later calcify into structural ones.</p>
+<p>A <strong>merger or acquisition</strong> initially shows as a sudden increase in $n$ (network size) with a sharp drop in $\lambda_2$: the two separate networks are now nominally joined but have few bridge edges. A successful integration is visible in the gradual rise of $\lambda_2$ and spectral gap over subsequent quarters as cross-organisational ties form. A failed integration stays at low $\lambda_2$ indefinitely, with the two original communities remaining spectrally distinct.</p>
+<p>Tracking the <strong>distribution of the full spectrum</strong>, not just $\lambda_2$, over time gives a richer picture. The number of near-zero eigenvalues tells you how many effectively disconnected communities exist at each time point. Rising eigenvalue variance signals increasing heterogeneity, with some parts of the network becoming more connected while others fragment.</p>
 </section>
 
 <!-- ══ S12c · HIERARCHY ════════════════════════════════════════════════════════ -->
 <section id="hierarchy">
 <h2>Hierarchy vs network: the spectrum of a tree</h2>
 <p>Most organisations exist somewhere between two structural extremes: the pure hierarchy (a tree graph, where the org chart is the network) and the random graph (where every pair has an equal chance of connecting, producing no structure at all). The spectrum of each extreme is instructive.</p>
-<p>A <strong>tree</strong> on $n$ nodes has exactly $n-1$ edges — the minimum needed to keep the network connected. Its Laplacian spectrum has one zero eigenvalue (it is connected), but the Fiedler value $\lambda_2$ is extremely small, often $O(1/n^2)$ for a path graph or $O(1/n)$ for a balanced binary tree. This means a pure hierarchy has mathematically negligible algebraic connectivity: removing a single edge (or a single person) immediately disconnects the network. Every manager is a single point of failure. Information must travel up and across the tree, a path of length $O(\log n)$ or worse.</p>
+<p>A <strong>tree</strong> on $n$ nodes has exactly $n-1$ edges, the minimum needed to keep the network connected. Its Laplacian spectrum has one zero eigenvalue (it is connected), but the Fiedler value $\lambda_2$ is extremely small, often $O(1/n^2)$ for a path graph or $O(1/n)$ or smaller for a balanced binary tree. This means a pure hierarchy has mathematically negligible algebraic connectivity: removing a single edge (or a single person) immediately disconnects the network. Every manager is a single point of failure. Information must travel up and across the tree, a path of length $O(\log n)$ or worse.</p>
 
 <figure>
   <svg viewBox="0 0 520 190" xmlns="http://www.w3.org/2000/svg" style="max-width:500px;">
@@ -961,13 +1043,13 @@ $$\hat{f}(k) = v_k^T f = \sum_{i=1}^n f(i) \cdot v_k(i)$$
     <circle cx="471" cy="148" r="16" fill="#2a6496" opacity="0.55"/>
     <text x="410" y="120" font-size="8" fill="#2a6496" font-family="Source Serif 4,serif" font-style="italic">informal ties</text>
   </svg>
-  <figcaption>Left: a pure tree hierarchy — formally connected, but every node is a potential single point of failure (SPOF) and $\lambda_2$ is tiny. Right: the same hierarchy enriched with informal cross-links (dashed), which dramatically increase $\lambda_2$, reduce path lengths, and create redundant routes. ONA makes these informal bridges visible and quantifies their structural value.</figcaption>
+  <figcaption>Left: a pure tree hierarchy, formally connected, but every node is a potential single point of failure (SPOF) and $\lambda_2$ is tiny. Right: the same hierarchy enriched with informal cross-links (dashed), which dramatically increase $\lambda_2$, reduce path lengths, and create redundant routes. ONA makes these informal bridges visible and quantifies their structural value.</figcaption>
 </figure>
 
-<p>A <strong>random graph</strong> sits at the other extreme. With even moderate edge density, $\lambda_2$ grows with $n$, path lengths are $O(\log n)$, and the network is extremely robust to node removal. But it is also uninterpretable and undrawable — no layout reveals meaningful structure because no structure exists.</p>
+<p>A <strong>random graph</strong> sits at the other extreme. With even moderate edge density, $\lambda_2$ grows with $n$, path lengths are $O(\log n)$, and the network is extremely robust to node removal. But it is also uninterpretable and undrawable: no layout reveals meaningful structure because no structure exists.</p>
 <p>Real organisations lie between these poles. The Laplacian spectrum positions them precisely: a spectrum that looks "tree-like" (very small $\lambda_2$, widely spread eigenvalues) indicates a rigid hierarchy where formal reporting lines dominate. A spectrum with moderate $\lambda_2$ and a clear eigengap indicates a healthy hybrid: formal structure overlaid with rich informal collaboration. A spectrum that looks "random-like" (large $\lambda_2$, eigenvalues bunched near the average degree) indicates a highly integrated organisation that may lack the structural differentiation needed for specialisation.</p>
 <div class="callout">
-  <strong>The ONA value proposition, made precise:</strong> A pure hierarchy has $\lambda_2 \approx O(1/n)$. Adding even a small number of informal cross-links — the kind that ONA identifies and strengthens — can increase $\lambda_2$ by an order of magnitude. The mathematical cost of rigid hierarchy is measurable, and so is the benefit of the informal network that compensates for it.
+  <strong>The ONA value proposition, made precise:</strong> A pure hierarchy has $\lambda_2 \approx O(1/n)$. Adding even a small number of informal cross-links (the kind that ONA identifies and strengthens) can increase $\lambda_2$ by an order of magnitude. The mathematical cost of rigid hierarchy is measurable, and so is the benefit of the informal network that compensates for it.
 </div>
 </section>
 
@@ -975,11 +1057,11 @@ $$\hat{f}(k) = v_k^T f = \sum_{i=1}^n f(i) \cdot v_k(i)$$
 <section id="puttingtogether">
 <h2>Putting it together: what spectral ONA actually tells you</h2>
 <ul class="ona-qs">
-  <li><span class="ona-q">Who are the informal leaders?</span>The leading eigenvector of $A$ — eigenvector centrality — combined with betweenness will surface the people whose organisational influence far exceeds their formal authority.</li>
+  <li><span class="ona-q">Who are the informal leaders?</span>Eigenvector centrality (leading eigenvector of $A$) combined with betweenness will surface the people whose organisational influence far exceeds their formal authority.</li>
   <li><span class="ona-q">Where are the silos?</span>Spectral clustering on the Laplacian eigenvectors gives a rigorous, data-driven answer to how many natural communities exist and who belongs to each. The Fiedler value tells you how severe the silos are.</li>
   <li><span class="ona-q">Who is critical for resilience?</span>Simulate node removals and recompute $\lambda_2$, or identify edges bridging large Fiedler-vector differences as a computational shortcut. The people whose removal most dramatically drops algebraic connectivity are single points of failure.</li>
-  <li><span class="ona-q">How fast does information travel?</span>The spectral gap of the normalised adjacency matrix is the direct mathematical answer. A strategic intervention — connecting two distant subgroups through a single new bridge role — can be evaluated analytically before implementation.</li>
-  <li><span class="ona-q">Does this organisation even have visualisable structure?</span>Compute $\lambda_2$ before commissioning a network map. If $\lambda_2 \gtrsim 10/\sqrt{n}$, no drawing algorithm will produce a clean picture — and that is itself a finding. A high Fiedler value means the organisation is well-integrated without strong cluster structure.</li>
+  <li><span class="ona-q">How fast does information travel?</span>The spectral gap of the normalised adjacency matrix is the direct mathematical answer. A strategic intervention such as connecting two distant subgroups through a single new bridge role can be evaluated analytically before implementation.</li>
+  <li><span class="ona-q">Does this organisation even have visualisable structure?</span>Compute $\lambda_2$ before commissioning a network map. If $\lambda_2 \gtrsim 10/\sqrt{n}$ (a practical rule of thumb), no drawing algorithm will produce a clean picture, and that is itself a finding. A high Fiedler value means the organisation is well-integrated without strong cluster structure.</li>
   <li><span class="ona-q">Are we becoming more or less integrated over time?</span>Track the spectrum quarterly. A rising Fiedler value and widening spectral gap signal increasing cohesion. Falling values signal fragmentation, often visible before it shows up in engagement surveys or performance data.</li>
 </ul>
 </section>
@@ -989,8 +1071,8 @@ $$\hat{f}(k) = v_k^T f = \sum_{i=1}^n f(i) \cdot v_k(i)$$
 <div class="interlude-label">Interlude</div>
 <h2>On the Laplacian: intuition, structure, and three variants</h2>
 
-<p>Start with something simple: a row of people, each holding a number — say, how much each person knows about a particular project. Ask, for each person: <em>how different am I from my neighbours?</em> The Laplacian is the operator that computes exactly that quantity for every node in the network.</p>
-<p>In continuous mathematics, the Laplacian appears in the heat equation, describing how temperature spreads through a material. A hot spot surrounded by cool material has a large Laplacian value — heat flows away from it rapidly. A region of uniform temperature has a Laplacian of zero — there is no local difference to drive any flow. The graph Laplacian is the same idea, discretised: instead of a continuous material, you have a network with values at nodes, and the Laplacian measures the mismatch between each node's value and its neighbours'.</p>
+<p>Start with something simple: a row of people, each holding a number (say, how much each person knows about a particular project. Ask, for each person: <em>how different am I from my neighbours?</em> The Laplacian is the operator that computes exactly that quantity for every node in the network.</p>
+<p>In continuous mathematics, the Laplacian appears in the heat equation, describing how temperature spreads through a material. A hot spot surrounded by cool material has a large Laplacian value, so heat flows away from it rapidly. A region of uniform temperature has a Laplacian of zero: there is no local difference to drive any flow. The graph Laplacian is the same idea, discretised: instead of a continuous material, you have a network with values at nodes, and the Laplacian measures the mismatch between each node's value and its neighbours'.</p>
 
 <h3>The three variants side by side</h3>
 <p>The entry pattern changes depending on which variant of the Laplacian you are using:</p>
@@ -1011,21 +1093,21 @@ $$\hat{f}(k) = v_k^T f = \sum_{i=1}^n f(i) \cdot v_k(i)$$
       <td>Degree $d_i$</td>
       <td>$-1$</td>
       <td>$0$</td>
-      <td>$[0, \infty)$ — scales with degree</td>
+      <td>$[0, \infty)$ (scales with degree)</td>
     </tr>
     <tr>
       <td><strong>Weighted</strong><br><small>$L_w = D_w - W$</small></td>
       <td>Weighted degree $\sum_j w_{ij}$</td>
       <td>$-w_{ij}$</td>
       <td>$0$</td>
-      <td>$[0, \infty)$ — scales with weights</td>
+      <td>$[0, \infty)$ (scales with weights)</td>
     </tr>
     <tr>
       <td><strong>Normalised</strong><br><small>$L_n = D^{-\!1/2} L D^{-\!1/2}$</small></td>
       <td>$1$ (always, uniformly)</td>
       <td>$-1/\!\sqrt{d_i d_j}$</td>
       <td>$0$</td>
-      <td>$[0, 2]$ — bounded, always</td>
+      <td>$[0, 2]$ (bounded, always)</td>
     </tr>
   </tbody>
 </table>
@@ -1044,13 +1126,13 @@ $$\hat{f}(k) = v_k^T f = \sum_{i=1}^n f(i) \cdot v_k(i)$$
     <text x="20" y="97"  font-size="9" fill="#888" font-family="JetBrains Mono,monospace">D</text>
     <text x="20" y="117" font-size="9" fill="#888" font-family="JetBrains Mono,monospace">E</text>
 
-    <!-- diagonal cells (degree) — dark blue -->
+    <!-- diagonal cells (degree): dark blue -->
     <rect x="28" y="24" width="20" height="18" rx="2" fill="#1a4a7a"/><text x="38" y="37" text-anchor="middle" fill="white" font-size="9" font-family="JetBrains Mono,monospace">2</text>
     <rect x="48" y="44" width="20" height="18" rx="2" fill="#1a4a7a"/><text x="58" y="57" text-anchor="middle" fill="white" font-size="9" font-family="JetBrains Mono,monospace">3</text>
     <rect x="68" y="64" width="20" height="18" rx="2" fill="#1a4a7a"/><text x="78" y="77" text-anchor="middle" fill="white" font-size="9" font-family="JetBrains Mono,monospace">3</text>
     <rect x="88" y="84" width="20" height="18" rx="2" fill="#1a4a7a"/><text x="98" y="97" text-anchor="middle" fill="white" font-size="9" font-family="JetBrains Mono,monospace">1</text>
     <rect x="108" y="104" width="20" height="18" rx="2" fill="#1a4a7a"/><text x="118" y="117" text-anchor="middle" fill="white" font-size="9" font-family="JetBrains Mono,monospace">1</text>
-    <!-- edge cells (-1) — medium blue -->
+    <!-- edge cells (-1): medium blue -->
     <!-- A-B, A-C -->
     <rect x="48" y="24" width="20" height="18" rx="2" fill="#adc6e0"/><text x="58" y="37" text-anchor="middle" fill="#333" font-size="9" font-family="JetBrains Mono,monospace">-1</text>
     <rect x="68" y="24" width="20" height="18" rx="2" fill="#adc6e0"/><text x="78" y="37" text-anchor="middle" fill="#333" font-size="9" font-family="JetBrains Mono,monospace">-1</text>
@@ -1077,7 +1159,7 @@ $$\hat{f}(k) = v_k^T f = \sum_{i=1}^n f(i) \cdot v_k(i)$$
     <rect x="48" y="104" width="20" height="18" rx="2" fill="#f0ede8"/><text x="58" y="117" text-anchor="middle" fill="#bbb" font-size="9" font-family="JetBrains Mono,monospace">0</text>
     <rect x="88" y="104" width="20" height="18" rx="2" fill="#f0ede8"/><text x="98" y="117" text-anchor="middle" fill="#bbb" font-size="9" font-family="JetBrains Mono,monospace">0</text>
 
-    <!-- NORMALISED — shifted right by 210 -->
+    <!-- NORMALISED: shifted right by 210 -->
     <text x="340" y="14" text-anchor="middle" font-family="Playfair Display,serif" font-size="11" font-style="italic" fill="#333">Normalised</text>
     <text x="284" y="37"  font-size="9" fill="#888" font-family="JetBrains Mono,monospace">A</text>
     <text x="284" y="57"  font-size="9" fill="#888" font-family="JetBrains Mono,monospace">B</text>
@@ -1093,13 +1175,13 @@ $$\hat{f}(k) = v_k^T f = \sum_{i=1}^n f(i) \cdot v_k(i)$$
     <!-- A-B: -1/√(2·3)=-0.41, A-C: -1/√(2·3)=-0.41 -->
     <rect x="316" y="24" width="24" height="18" rx="2" fill="#adc6e0"/><text x="328" y="37" text-anchor="middle" fill="#333" font-size="8" font-family="JetBrains Mono,monospace">−.41</text>
     <rect x="340" y="24" width="24" height="18" rx="2" fill="#adc6e0"/><text x="352" y="37" text-anchor="middle" fill="#333" font-size="8" font-family="JetBrains Mono,monospace">−.41</text>
-    <!-- B-A, B-C: -1/√6=-0.41, B-D: -1/√3=-0.58 -->
+    <!-- B-A: -1/√6=-0.41; B-C: -1/√9=-0.33; B-D: -1/√3=-0.58 -->
     <rect x="292" y="44" width="24" height="18" rx="2" fill="#adc6e0"/><text x="304" y="57" text-anchor="middle" fill="#333" font-size="8" font-family="JetBrains Mono,monospace">−.41</text>
-    <rect x="340" y="44" width="24" height="18" rx="2" fill="#adc6e0"/><text x="352" y="57" text-anchor="middle" fill="#333" font-size="8" font-family="JetBrains Mono,monospace">−.41</text>
+    <rect x="340" y="44" width="24" height="18" rx="2" fill="#c4d8e8"/><text x="352" y="57" text-anchor="middle" fill="#333" font-size="8" font-family="JetBrains Mono,monospace">−.33</text>
     <rect x="364" y="44" width="24" height="18" rx="2" fill="#9ab8d0"/><text x="376" y="57" text-anchor="middle" fill="#333" font-size="8" font-family="JetBrains Mono,monospace">−.58</text>
-    <!-- C-A, C-B, C-E: -1/√6, -1/√6, -1/√3 -->
+    <!-- C-A: -1/√6=-0.41; C-B: -1/√9=-0.33; C-E: -1/√3=-0.58 -->
     <rect x="292" y="64" width="24" height="18" rx="2" fill="#adc6e0"/><text x="304" y="77" text-anchor="middle" fill="#333" font-size="8" font-family="JetBrains Mono,monospace">−.41</text>
-    <rect x="316" y="64" width="24" height="18" rx="2" fill="#adc6e0"/><text x="328" y="77" text-anchor="middle" fill="#333" font-size="8" font-family="JetBrains Mono,monospace">−.41</text>
+    <rect x="316" y="64" width="24" height="18" rx="2" fill="#c4d8e8"/><text x="328" y="77" text-anchor="middle" fill="#333" font-size="8" font-family="JetBrains Mono,monospace">−.33</text>
     <rect x="388" y="64" width="24" height="18" rx="2" fill="#9ab8d0"/><text x="400" y="77" text-anchor="middle" fill="#333" font-size="8" font-family="JetBrains Mono,monospace">−.58</text>
     <!-- D-B: -0.58 -->
     <rect x="316" y="84" width="24" height="18" rx="2" fill="#9ab8d0"/><text x="328" y="97" text-anchor="middle" fill="#333" font-size="8" font-family="JetBrains Mono,monospace">−.58</text>
@@ -1126,27 +1208,27 @@ $$\hat{f}(k) = v_k^T f = \sum_{i=1}^n f(i) \cdot v_k(i)$$
     <rect x="390" y="148" width="14" height="10" rx="2" fill="#9ab8d0"/>
     <text x="408" y="158" font-size="9" fill="#555" font-family="Source Serif 4,serif">normalised edge</text>
   </svg>
-  <figcaption>Combinatorial Laplacian (left) vs normalised Laplacian (right) for the five-node network. Note the uniform diagonal of 1 in the normalised version, and the variation in off-diagonal values depending on the degrees of the two endpoint nodes.</figcaption>
+  <figcaption>Combinatorial Laplacian (left) vs normalised Laplacian (right) for the five-node network. The normalised version has a uniform diagonal of 1, but three distinct off-diagonal values: −.41 for edges between the degree-2 hub (Ana) and the degree-3 hubs (Bo, Cy) since −1/√(2·3)≈−0.41; −.33 for the Bo–Cy edge since −1/√(3·3)≈−0.33; and −.58 for edges to degree-1 leaves since −1/√(3·1)≈−0.58. Higher-degree edges attract smaller-magnitude weights: the normalisation penalises well-connected nodes.</figcaption>
 </figure>
 
 <h3>The weighted Laplacian</h3>
-<p>When edges carry weights $w_{ij}$ — representing tie strength, interaction frequency, or spring constants — the off-diagonal entry becomes $-w_{ij}$ instead of $-1$, and the diagonal becomes the weighted degree: $\sum_j w_{ij}$. The unweighted version is the special case where every weight equals $1$. Every property of the Laplacian carries over unchanged — rows still sum to zero, eigenvalues are still non-negative, $\lambda_2$ is still algebraic connectivity. In ONA, the weighted Laplacian is almost always the right object when you have survey data with ordinal tie strengths or communication data with frequency counts.</p>
+<p>When edges carry weights $w_{ij}$ (representing tie strength, interaction frequency, or spring constants), the off-diagonal entry becomes $-w_{ij}$ instead of $-1$, and the diagonal becomes the weighted degree: $\sum_j w_{ij}$. The unweighted version is the special case where every weight equals $1$. Every property of the Laplacian carries over unchanged: rows still sum to zero, eigenvalues are still non-negative, $\lambda_2$ is still algebraic connectivity. In ONA, the weighted Laplacian is almost always the right object when you have survey data with ordinal tie strengths or communication data with frequency counts.</p>
 
 <h3>The normalised Laplacian</h3>
-<p>The normalised Laplacian $L_n = D^{-1/2} L D^{-1/2}$ is a deliberate rescaling. Working through the arithmetic: diagonal entries become $1$ uniformly; off-diagonal entries become $-1/\sqrt{d_i \cdot d_j}$ for connected pairs. The motivation is to correct for degree heterogeneity: in the raw Laplacian, a node with degree 100 dominates the quadratic form simply because it has more edges. The normalisation divides out degree so every node contributes comparably. One consequence: eigenvalues of $L_n$ are always in $[0, 2]$ for any simple undirected graph — they do not scale with degree, making them comparable across networks of very different sizes and densities.</p>
+<p>The normalised Laplacian $L_n = D^{-1/2} L D^{-1/2}$ is a deliberate rescaling. Working through the arithmetic: diagonal entries become $1$ uniformly; off-diagonal entries become $-1/\sqrt{d_i \cdot d_j}$ for connected pairs. The motivation is to correct for degree heterogeneity: in the raw Laplacian, a node with degree 100 dominates the quadratic form simply because it has more edges. The normalisation divides out degree so every node contributes comparably. One consequence: eigenvalues of $L_n$ are always in $[0, 2]$ for any simple undirected graph; they do not scale with degree, making them comparable across networks of very different sizes and densities.</p>
 
 <h3>What all three share</h3>
 <p>All three variants preserve the essential character of the Laplacian: the quadratic form still measures how much a vector varies across edges, rows still sum to zero, and the number of zero eigenvalues still counts disconnected components. What changes is the metric in which variation is being measured: raw edge counts, weighted strength, or degree-normalised units.</p>
 
 <p><strong>Edge case:</strong> When a node has degree zero (an isolate), $D^{-1/2}$ is undefined. The convention is to set $L_n(i,i) = 0$ for such nodes, treating them as contributing no signal rather than causing a division-by-zero error. In practice, verify that isolates in your data are genuine before applying the normalised Laplacian.</p>
 
-<p>Multiplying $L$ by a vector of values — one per node — gives at node $i$: the degree of $i$ times its own value, minus the sum of its neighbours' values. That is the local mismatch quantity. A uniform signal has no mismatch anywhere (correct: $Lv = 0$ for constant $v$). Values that vary sharply across a network cut give large Laplacian values at the cut. The Fiedler value corresponds to the smoothest possible non-trivial variation across the network — the mode that varies as gently as it can while still varying at all, and whose shape traces out the deepest structural division in the graph.</p>
+<p>Multiplying $L$ by a vector of values (one per node) gives at node $i$: the degree of $i$ times its own value, minus the sum of its neighbours' values. That is the local mismatch quantity. A uniform signal has no mismatch anywhere (correct: $Lv = 0$ for constant $v$). Values that vary sharply across a network cut give large Laplacian values at the cut. The Fiedler value corresponds to the smoothest possible non-trivial variation across the network, specifically the mode that varies as gently as it can while still varying at all, and whose shape traces out the deepest structural division in the graph.</p>
 </div><!-- end interlude -->
 
 <!-- ══ S15 · BIPARTITE ════════════════════════════════════════════════════════ -->
 <section id="bipartite">
 <h2>Bipartite networks in ONA: when people connect through things</h2>
-<p>In classical ONA you ask "who talks to whom?" and observe a direct person-to-person graph. But a large and analytically rich class of organisational data does not work this way. Instead, you observe people connected to <em>things</em> — documents, projects, Slack threads, meetings — and the person-to-person network is implicit. Two people are related not because they interacted directly, but because they share membership in some context. This is a <strong>two-mode</strong> or <strong>bipartite</strong> network.</p>
+<p>In classical ONA you ask "who talks to whom?" and observe a direct person-to-person graph. But a large and analytically rich class of organisational data does not work this way. Instead, you observe people connected to <em>things</em> such as documents, projects, Slack threads, and meetings, and the person-to-person network is implicit. Two people are related not because they interacted directly, but because they share membership in some context. This is a <strong>two-mode</strong> or <strong>bipartite</strong> network.</p>
 
 <figure>
   <!-- Bipartite graph illustration -->
@@ -1197,24 +1279,24 @@ $$Q = B^T \cdot B \quad \text{(artifact × artifact: shared participant counts)}
 <!-- ══ S16 · HYPERGRAPH ════════════════════════════════════════════════════════ -->
 <section id="hypergraph">
 <h2>Hyperedges and multi-layer networks</h2>
-<p>The adjacency matrix rests on an assumption easy to miss: that every relationship worth modelling is between exactly <em>two</em> entities. But organizations are full of irreducibly group-level interactions. A standing committee of seven people is not a collection of twenty-one bilateral relationships. A brainstorming session, a cross-functional task force, a real-time Slack troubleshooting thread — these happen <em>among</em> participants simultaneously, not between pairs.</p>
+<p>The adjacency matrix rests on an assumption easy to miss: that every relationship worth modelling is between exactly <em>two</em> entities. But organizations are full of irreducibly group-level interactions. A standing committee of seven people is not a collection of twenty-one bilateral relationships. A brainstorming session, a cross-functional task force, a real-time Slack troubleshooting thread: these happen <em>among</em> participants simultaneously, not between pairs.</p>
 
 <h3>The hypergraph Laplacian</h3>
 <p>A <strong>hypergraph</strong> allows edges (now called <em>hyperedges</em>) to connect any number of vertices. The incidence matrix $H$ is $n \times m$ where entry $H_{ik} = 1$ if node $i$ belongs to hyperedge $k$. With vertex degree matrix $D_v$, hyperedge size matrix $D_e$, and hyperedge weight matrix $W$, the hypergraph Laplacian is:</p>
 $$\Delta = D_v - H W D_e^{-1} H^T$$
-<p>When every hyperedge has exactly two members, this reduces precisely to the ordinary graph Laplacian $L = D - A$. The $D_e^{-1}$ term distributes each hyperedge's weight equally across all pairs of members — a meeting of twenty contributes less connectivity per pair than a meeting of four, exactly the right behaviour.</p>
+<p>When every hyperedge has exactly two members, $D_e^{-1}$ divides each edge's contribution by its size (2), so the hypergraph Laplacian reduces to $\frac{1}{2}(D - A)$, a scalar multiple of the ordinary graph Laplacian. This means the eigenvectors are identical and the eigenvalues are halved; all qualitative properties (connectivity, community structure, the Fiedler vector) are preserved. The $D_e^{-1}$ term is what makes a meeting of twenty contribute less connectivity per pair than a meeting of four, which is exactly the right behaviour, at the cost of this constant factor when comparing to the standard pairwise Laplacian.</p>
 
 <h3>Multi-layer networks and the supra-Laplacian</h3>
 <p>A multi-layer network preserves multiple relationship types rather than flattening them. It consists of $\ell$ layers, each an adjacency matrix $A^{(\ell)}$ over the same node set, where $\ell$ indexes the relationship type (reporting, collaboration, trust, communication…).</p>
-<p>The full object is encoded in the <strong>supra-adjacency matrix</strong> $\mathcal{A}$ of size $n\ell \times n\ell$. Each diagonal block of size $n \times n$ is one layer's adjacency matrix. The supra-Laplacian $\mathcal{L} = \mathcal{D} - \mathcal{A}$ generalises everything from the single-layer case. The most organisationally interesting quantity is the <em>interlayer spectral gap</em>: when it is large, the different relationship types carve out genuinely distinct structures — the people central in the reporting network are not the same people central in the trust network. That divergence is one of the most common and most actionable findings in ONA practice.</p>
+<p>The full object is encoded in the <strong>supra-adjacency matrix</strong> $\mathcal{A}$ of size $n\ell \times n\ell$. Each diagonal block of size $n \times n$ is one layer's adjacency matrix. The off-diagonal blocks encode interlayer connections: for the common case of uniform coupling between the same node across layers, the block linking layer $p$ to layer $q$ is $c_{pq} I_n$, where $c_{pq}$ is the interlayer coupling strength and $I_n$ is the identity. The supra-Laplacian $\mathcal{L} = \mathcal{D} - \mathcal{A}$ generalises everything from the single-layer case. A practically useful quantity is the algebraic connectivity of $\mathcal{L}$ relative to the individual layer Laplacians: when the interlayer coupling is weak relative to the within-layer structure, the two networks remain spectrally distinct: the people central in the reporting network are not the same people central in the trust network. That divergence is one of the most common and most actionable findings in ONA practice.</p>
 </section>
 
 <!-- ══ CLOSING ═════════════════════════════════════════════════════════════════ -->
 <section>
 <h2>A closing note on the elegance</h2>
-<p>What is remarkable about the spectral approach is that all of this organisational insight lives, from the beginning, inside the adjacency matrix. The matrix does not <em>represent</em> the network — it <em>is</em> the network, in a form that can be analysed with the full power of linear algebra. Eigenvalues are not statistics computed on top of the graph; they are invariants of the graph's structure itself.</p>
+<p>What is remarkable about the spectral approach is that all of this organisational insight lives, from the beginning, inside the adjacency matrix. The matrix does not <em>represent</em> the network; it <em>is</em> the network, in a form that can be analysed with the full power of linear algebra. Eigenvalues are not statistics computed on top of the graph; they are invariants of the graph's structure itself.</p>
 <p>This is why spectral methods scale: a 50,000-person network is still just a matrix, and modern sparse eigenvalue solvers can decompose it efficiently using algorithms like Lanczos iteration that exploit sparsity rather than treating the matrix as dense.</p>
-<p>For ONA practitioners, the conceptual payoff is substantial. Instead of computing a list of separate metrics and hoping they tell a coherent story, spectral analysis gives you a single mathematical object — the spectrum — that encodes the entire structural story at once. Learning to read that spectrum is learning to read the hidden architecture of your organisation.</p>
+<p>For ONA practitioners, the conceptual payoff is substantial. Instead of computing a list of separate metrics and hoping they tell a coherent story, spectral analysis gives you a single mathematical object, the spectrum, that encodes the entire structural story at once. Learning to read that spectrum is learning to read the hidden architecture of your organisation.</p>
 </section>
 
 <!-- ══ FOOTER ═════════════════════════════════════════════════════════════════ -->
