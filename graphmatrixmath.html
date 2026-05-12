@@ -446,6 +446,28 @@ L = \begin{pmatrix} \mathbf{2} & -1 & -1 & 0 & 0 \\ -1 & \mathbf{3} & -1 & -1 & 
   <strong>Reading the Laplacian:</strong> The bold diagonal entries are the node degrees. Off-diagonal $-1$ entries mark edges. Every row sums to zero, which is the algebraic signature of a difference operator rather than an absolute-value one.
 </div>
 
+<h3>What is an eigenvalue? The defining equation</h3>
+<p>Before reading the spectrum, it is worth pausing to ask: what mathematical question are these numbers the answer to?</p>
+<p>Given a square matrix $M$ and a non-zero vector $\mathbf{v}$, the <strong>eigenvalue equation</strong> asks: for which scalars $\lambda$ does multiplying $\mathbf{v}$ by $M$ produce the same result as simply scaling $\mathbf{v}$ by $\lambda$?</p>
+$$\boxed{L\,\mathbf{v} = \lambda\,\mathbf{v}}$$
+<p>A scalar $\lambda$ satisfying this for some non-zero $\mathbf{v}$ is an <strong>eigenvalue</strong> of $L$; the corresponding vector $\mathbf{v}$ is its <strong>eigenvector</strong>. Geometrically: applying $L$ to $\mathbf{v}$ does not rotate it — it only stretches or shrinks it by the factor $\lambda$. The eigenvectors are the directions the matrix "points along"; the eigenvalues tell you how strongly. The complete set of eigenvalues is the <strong>spectrum</strong> of $L$.</p>
+
+<h3>How eigenvalues are found</h3>
+<p>Rearranging the eigenvalue equation gives $(L - \lambda I)\,\mathbf{v} = \mathbf{0}$. For this to have a non-zero solution $\mathbf{v}$, the matrix $(L - \lambda I)$ must be singular — meaning its determinant must be zero:</p>
+$$\det(L - \lambda I) = 0$$
+<p>Expanding this determinant yields the <strong>characteristic polynomial</strong>, a degree-$n$ polynomial in $\lambda$. Its $n$ roots are the eigenvalues. For our $5 \times 5$ Laplacian this polynomial has five roots; finding them by hand would be laborious, but the computation is routine for any linear-algebra library.</p>
+
+<p>Once each eigenvalue $\lambda_k$ is known, its eigenvector is found by solving $(L - \lambda_k I)\,\mathbf{v} = \mathbf{0}$ for $\mathbf{v}$. This is an underdetermined system — any scalar multiple of a solution is also a solution — so a unique answer requires an extra constraint. The standard convention is <strong>unit normalisation</strong>: we require $\|\mathbf{v}\| = 1$, meaning the sum of squared entries equals one. This pins the scale while leaving a sign ambiguity (both $\mathbf{v}$ and $-\mathbf{v}$ satisfy the unit-norm constraint), which is addressed further in the sign ambiguity section below.</p>
+
+<h3>Reading the equation on the five-node graph</h3>
+<p>To make this concrete: the Fiedler vector $\mathbf{v}_2$ with eigenvalue $\lambda_2 \approx 0.697$ satisfies $L\,\mathbf{v}_2 = 0.697\,\mathbf{v}_2$ exactly. That means if you write $\mathbf{v}_2$ as a column of five numbers (one per node) and multiply by $L$, you get back exactly $0.697$ times those same numbers — the matrix does not mix the entries in any complex way; it just scales the whole vector. We can verify this for Ana's row of $L$:</p>
+$$\underbrace{\begin{pmatrix}2 & -1 & -1 & 0 & 0\end{pmatrix}}_{\text{row for Ana}} \underbrace{\begin{pmatrix}0.000\\-0.205\\+0.205\\-0.677\\+0.677\end{pmatrix}}_{\mathbf{v}_2} = 2(0.000) + (-1)(-0.205) + (-1)(0.205) + 0 + 0 = 0.000$$
+<p>And $0.697 \times 0.000 = 0.000$. Both sides match. The same check holds for every other row. This is what it means for $\mathbf{v}_2$ to be an eigenvector of $L$ with eigenvalue $\lambda_2$.</p>
+
+<div class="callout">
+  <strong>Why five eigenvalues, and why ordered?</strong> A $5 \times 5$ matrix always has exactly five eigenvalues (counted with multiplicity). Because $L$ is symmetric and positive semi-definite, all five are real and non-negative, so we can sort them: $\lambda_1 \leq \lambda_2 \leq \cdots \leq \lambda_5$. $\lambda_1 = 0$ always, because the constant vector $\mathbf{1}$ is always an eigenvector with eigenvalue zero (every row of $L$ sums to zero, so $L\mathbf{1} = \mathbf{0} = 0 \cdot \mathbf{1}$). The rest encode progressively finer structural detail.
+</div>
+
 <p>The spectrum of $L$ is approximately $\{0,\; 0.697,\; 1.382,\; 3.618,\; 4.303\}$. The Fiedler value $\lambda_2 \approx 0.697$ indicates moderate connectivity. Its eigenvector, the <em>Fiedler vector</em>, assigns:</p>
 
 <figure>
@@ -525,7 +547,7 @@ L = \begin{pmatrix} \mathbf{2} & -1 & -1 & 0 & 0 \\ -1 & \mathbf{3} & -1 & -1 & 
 <!-- ══ S5 · SPECTRUM ══════════════════════════════════════════════════════════ -->
 <section id="spectrum">
 <h2>Eigenvalues and eigenvectors: the spectrum of the organisation</h2>
-<p>When you decompose the Laplacian into its eigenvalues and eigenvectors, you perform <em>spectral analysis</em>. Each eigenvalue is a scalar; each eigenvector assigns one real number per node, representing that node's position along a particular structural dimension.</p>
+<p>The eigenvalue equation $L\mathbf{v} = \lambda\mathbf{v}$ and the unit-normalisation convention were introduced in the previous section using the five-node graph. Here we interpret what the resulting spectrum tells us about the organisation as a whole. Each eigenvalue measures the strength of one structural mode; its paired eigenvector assigns every node a coordinate along that mode, representing each person's position within that structural dimension.</p>
 
 <h3>The Fiedler value $\lambda_2$ and algebraic connectivity</h3>
 <p>The Laplacian always has at least one zero eigenvalue; the number of zero eigenvalues equals exactly the number of disconnected components. For a connected network there is exactly one zero eigenvalue ($\lambda_1 = 0$). The <strong>Fiedler value</strong> $\lambda_2$, the second smallest eigenvalue, is perhaps the single most important number in ONA:</p>
