@@ -2,7 +2,6 @@
 
 [![Open in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/johanm/graph-matrixmath-ona/blob/main/graphmatrixmath.ipynb)  [![Read Essay](https://img.shields.io/badge/Read-Essay-1a4a7a?style=flat)](https://johanm.github.io/graph-matrixmath-ona/graphmatrixmath.html)
 
-> **Replace `johanm/graph-matrixmath-ona` in the badge link above with your actual GitHub username and repository name before pushing.**
 
 ---
 
